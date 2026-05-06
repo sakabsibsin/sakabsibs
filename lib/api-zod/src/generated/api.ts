@@ -31,6 +31,7 @@ export const ListProductsResponseItem = zod.object({
   images: zod.array(zod.string()),
   material: zod.string(),
   category: zod.string(),
+  productCode: zod.string(),
   inStock: zod.boolean(),
   featured: zod.boolean(),
   createdAt: zod.coerce.date(),
@@ -62,6 +63,7 @@ export const GetFeaturedProductsResponseItem = zod.object({
   images: zod.array(zod.string()),
   material: zod.string(),
   category: zod.string(),
+  productCode: zod.string(),
   inStock: zod.boolean(),
   featured: zod.boolean(),
   createdAt: zod.coerce.date(),
@@ -101,6 +103,7 @@ export const GetProductResponse = zod.object({
   images: zod.array(zod.string()),
   material: zod.string(),
   category: zod.string(),
+  productCode: zod.string(),
   inStock: zod.boolean(),
   featured: zod.boolean(),
   createdAt: zod.coerce.date(),
@@ -132,6 +135,7 @@ export const UpdateProductResponse = zod.object({
   images: zod.array(zod.string()),
   material: zod.string(),
   category: zod.string(),
+  productCode: zod.string(),
   inStock: zod.boolean(),
   featured: zod.boolean(),
   createdAt: zod.coerce.date(),
@@ -163,7 +167,75 @@ export const ToggleProductStockResponse = zod.object({
   images: zod.array(zod.string()),
   material: zod.string(),
   category: zod.string(),
+  productCode: zod.string(),
   inStock: zod.boolean(),
   featured: zod.boolean(),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List all categories
+ */
+export const ListCategoriesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  codePrefix: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListCategoriesResponse = zod.array(ListCategoriesResponseItem);
+
+/**
+ * @summary Create a new category
+ */
+export const CreateCategoryBody = zod.object({
+  name: zod.string(),
+});
+
+/**
+ * @summary Delete a category
+ */
+export const DeleteCategoryParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List all settings
+ */
+export const ListSettingsResponse = zod.record(zod.string(), zod.string());
+
+/**
+ * @summary Create or update a setting by key
+ */
+export const UpsertSettingParams = zod.object({
+  key: zod.coerce.string(),
+});
+
+export const UpsertSettingBody = zod.object({
+  value: zod.string(),
+});
+
+export const UpsertSettingResponse = zod.object({
+  key: zod.string(),
+  value: zod.string(),
+});
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  contentType: zod.string(),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+});
+
+/**
+ * @summary Serve an uploaded object
+ */
+export const GetStorageObjectParams = zod.object({
+  objectPath: zod.coerce.string(),
 });

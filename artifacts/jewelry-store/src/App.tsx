@@ -9,6 +9,8 @@ import Catalog from "./pages/catalog";
 import ProductDetail from "./pages/product-detail";
 import AdminDashboard from "./pages/admin-dashboard";
 import AdminProductForm from "./pages/admin-product-form";
+import AdminCategories from "./pages/admin-categories";
+import AdminSettings from "./pages/admin-settings";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +23,8 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/products/new" component={AdminProductForm} />
       <Route path="/admin/products/:id/edit" component={AdminProductForm} />
+      <Route path="/admin/categories" component={AdminCategories} />
+      <Route path="/admin/settings" component={AdminSettings} />
       <Route component={NotFound} />
     </Switch>
   );

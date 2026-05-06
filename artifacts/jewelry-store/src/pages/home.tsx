@@ -12,9 +12,9 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative h-[calc(100dvh-4rem)] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-muted -z-10">
-          <img 
-            src="https://images.unsplash.com/photo-1599643478514-4a4e09b5220c?q=80&w=2940&auto=format&fit=crop" 
-            alt="Aurum Jewelry Collection" 
+          <img
+            src="https://images.unsplash.com/photo-1599643478514-4a4e09b5220c?q=80&w=2940&auto=format&fit=crop"
+            alt="Aurum Jewelry Collection"
             className="w-full h-full object-cover opacity-90"
           />
         </div>
@@ -37,7 +37,7 @@ export default function Home() {
       </section>
 
       {/* Featured Products */}
-      <section className="px-4 md:px-8 pb-32">
+      <section className="px-4 md:px-8 pb-20">
         <div className="flex items-end justify-between mb-12 border-b border-border pb-4">
           <h2 className="text-2xl font-serif tracking-widest uppercase">Featured</h2>
           <Link href="/products" className="text-sm uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
@@ -62,6 +62,17 @@ export default function Home() {
             {featuredProducts?.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
+          </div>
+        )}
+
+        {!isLoading && (
+          <div className="mt-16 text-center">
+            <Link
+              href="/products"
+              className="inline-block border border-foreground px-10 py-3 text-sm uppercase tracking-widest hover:bg-foreground hover:text-background transition-colors duration-500"
+            >
+              View All Products
+            </Link>
           </div>
         )}
       </section>

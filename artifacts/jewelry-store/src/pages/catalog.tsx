@@ -1,35 +1,41 @@
 import { useState } from "react";
 import { StoreLayout } from "@/components/layout";
 import { ProductCard } from "@/components/product-card";
-import { useListProducts, getListProductsQueryKey } from "@workspace/api-client-react";
+import {
+  useListProducts,
+  useListCategories,
+  getListProductsQueryKey,
+} from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const CATEGORIES = ["All", "Rings", "Necklaces", "Earrings", "Bracelets"];
 
 export default function Catalog() {
   const [activeCategory, setActiveCategory] = useState("All");
-  
-  const queryParams = activeCategory === "All" ? {} : { category: activeCategory.toLowerCase() };
-  
+
+  const { data: categories } = useListCategories();
+
+  const queryParams = activeCategory === "All" ? {} : { category: activeCategory };
+
   const { data: products, isLoading } = useListProducts(queryParams, {
     query: {
-      queryKey: getListProductsQueryKey(queryParams)
-    }
+      queryKey: getListProductsQueryKey(queryParams),
+    },
   });
+
+  const allCategories = ["All", ...(categories?.map((c) => c.name) ?? [])];
 
   return (
     <StoreLayout>
       <div className="container mx-auto px-4 md:px-8 py-16">
         <header className="mb-16">
           <h1 className="text-4xl md:text-5xl font-serif tracking-widest mb-12">Collection</h1>
-          
+
           <div className="flex flex-wrap gap-8 border-b border-border">
-            {CATEGORIES.map((category) => (
+            {allCategories.map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
                 className={`pb-4 text-sm uppercase tracking-widest transition-colors relative
-                  ${activeCategory === category ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}
+                  ${activeCategory === category ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
                 `}
               >
                 {category}

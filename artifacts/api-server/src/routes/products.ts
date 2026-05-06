@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql } from "drizzle-orm";
-import { db, productsTable } from "@workspace/db";
+import { db, productsTable, categoriesTable } from "@workspace/db";
 import {
   ListProductsQueryParams,
   CreateProductBody,
@@ -86,9 +86,27 @@ router.post("/products", async (req, res): Promise<void> => {
     return;
   }
 
+  const [cat] = await db
+    .select()
+    .from(categoriesTable)
+    .where(eq(categoriesTable.name, parsed.data.category));
+  const prefix = cat?.codePrefix ?? parsed.data.category.substring(0, 2).toUpperCase();
+
+  const existingCodes = await db
+    .select({ code: productsTable.productCode })
+    .from(productsTable)
+    .where(sql`${productsTable.productCode} LIKE ${prefix + "%"}`);
+
+  let nextNum = 101;
+  for (const { code } of existingCodes) {
+    const num = parseInt(code.slice(prefix.length));
+    if (!isNaN(num) && num >= nextNum) nextNum = num + 1;
+  }
+  const productCode = prefix + nextNum;
+
   const [product] = await db
     .insert(productsTable)
-    .values(parsed.data)
+    .values({ ...parsed.data, productCode })
     .returning();
 
   res.status(201).json(GetProductResponse.parse(product));

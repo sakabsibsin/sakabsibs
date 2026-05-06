@@ -1,12 +1,12 @@
 import { Link, useLocation } from "wouter";
 import { AdminLayout } from "@/components/layout";
-import { 
-  useGetProductStats, 
-  useListProducts, 
+import {
+  useGetProductStats,
+  useListProducts,
   useToggleProductStock,
   useDeleteProduct,
   getListProductsQueryKey,
-  getGetProductStatsQueryKey
+  getGetProductStatsQueryKey,
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -45,18 +45,11 @@ export default function AdminDashboard() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
-          toast({
-            title: "Stock updated",
-            description: "Product stock status has been updated successfully.",
-          });
+          toast({ title: "Stock updated", description: "Product stock status has been updated." });
         },
         onError: () => {
-          toast({
-            title: "Error",
-            description: "Failed to update product stock.",
-            variant: "destructive",
-          });
-        }
+          toast({ title: "Error", description: "Failed to update stock.", variant: "destructive" });
+        },
       }
     );
   };
@@ -68,18 +61,11 @@ export default function AdminDashboard() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
-          toast({
-            title: "Product deleted",
-            description: "The product has been removed from the catalog.",
-          });
+          toast({ title: "Product deleted", description: "The product has been removed." });
         },
         onError: () => {
-          toast({
-            title: "Error",
-            description: "Failed to delete product.",
-            variant: "destructive",
-          });
-        }
+          toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" });
+        },
       }
     );
   };
@@ -93,7 +79,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: "Total Products", value: stats?.total },
             { label: "In Stock", value: stats?.inStock },
@@ -101,11 +87,11 @@ export default function AdminDashboard() {
             { label: "Featured", value: stats?.featured },
           ].map((stat, i) => (
             <div key={i} className="bg-card p-6 border border-border">
-              <p className="text-sm text-muted-foreground uppercase tracking-widest mb-2">{stat.label}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">{stat.label}</p>
               {statsLoading ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <p className="text-3xl font-serif">{stat.value || 0}</p>
+                <p className="text-3xl font-serif">{stat.value ?? 0}</p>
               )}
             </div>
           ))}
@@ -113,22 +99,23 @@ export default function AdminDashboard() {
 
         {/* Products Table */}
         <div className="bg-card border border-border">
-          <div className="p-6 border-b border-border flex justify-between items-center">
+          <div className="p-4 md:p-6 border-b border-border flex justify-between items-center gap-4 flex-wrap">
             <h2 className="text-xl font-serif tracking-wide">All Products</h2>
             <Button asChild className="bg-foreground text-background hover:bg-foreground/90 rounded-none uppercase tracking-widest text-xs h-10 px-6">
               <Link href="/admin/products/new">Add Product</Link>
             </Button>
           </div>
-          
-          <div className="p-0">
+
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">Image</TableHead>
+                  <TableHead className="w-[64px]">Image</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead className="hidden sm:table-cell">Code</TableHead>
+                  <TableHead className="hidden md:table-cell">Category</TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Stock</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -138,7 +125,8 @@ export default function AdminDashboard() {
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-12 w-12" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-12" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
@@ -146,60 +134,80 @@ export default function AdminDashboard() {
                   ))
                 ) : products?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground font-serif italic">
-                      No products found. Add your first piece to the catalog.
+                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground font-serif italic">
+                      No products found. Add your first piece.
                     </TableCell>
                   </TableRow>
                 ) : (
                   products?.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell>
-                        <div className="h-12 w-12 bg-muted border border-border overflow-hidden">
-                          {product.images && product.images[0] && (
+                        <div className="h-12 w-12 bg-muted border border-border overflow-hidden shrink-0">
+                          {product.images?.[0] && (
                             <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {product.name}
-                        {product.featured && <span className="ml-2 text-[10px] uppercase tracking-widest bg-muted px-2 py-0.5 border border-border">Featured</span>}
+                      <TableCell className="font-medium max-w-[140px]">
+                        <span className="line-clamp-2">{product.name}</span>
+                        {product.featured && (
+                          <span className="ml-0 mt-1 block text-[10px] uppercase tracking-widest bg-muted px-2 py-0.5 border border-border w-fit">
+                            Featured
+                          </span>
+                        )}
                       </TableCell>
-                      <TableCell className="capitalize text-muted-foreground">{product.category}</TableCell>
-                      <TableCell>${product.price.toFixed(2)}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground text-xs font-mono">
+                        {product.productCode}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell capitalize text-muted-foreground text-sm">
+                        {product.category}
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        ₹{product.price.toLocaleString("en-IN")}
+                      </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Switch 
-                            checked={product.inStock} 
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={product.inStock}
                             onCheckedChange={(checked) => handleToggleStock(product.id, checked)}
                             disabled={toggleStock.isPending}
                           />
-                          <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                          <span className="text-xs uppercase tracking-widest text-muted-foreground hidden lg:block">
                             {product.inStock ? "In Stock" : "Out"}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="icon" className="rounded-none border-border" onClick={() => setLocation(`/admin/products/${product.id}/edit`)}>
-                            <Edit className="h-4 w-4" />
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="rounded-none border-border h-8 w-8"
+                            onClick={() => setLocation(`/admin/products/${product.id}/edit`)}
+                          >
+                            <Edit className="h-3.5 w-3.5" />
                           </Button>
-                          
+
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="icon" className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground">
-                                <Trash2 className="h-4 w-4" />
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground h-8 w-8"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent className="rounded-none border-border">
                               <AlertDialogHeader>
                                 <AlertDialogTitle className="font-serif">Delete Product</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete {product.name}? This action cannot be undone.
+                                  Are you sure you want to delete "{product.name}"? This cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel className="rounded-none uppercase tracking-widest text-xs">Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
+                                <AlertDialogAction
                                   onClick={() => handleDelete(product.id)}
                                   className="rounded-none uppercase tracking-widest text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >

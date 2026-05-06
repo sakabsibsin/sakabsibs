@@ -17,6 +17,7 @@ export interface Product {
   images: string[];
   material: string;
   category: string;
+  productCode: string;
   inStock: boolean;
   featured: boolean;
   createdAt: string;
@@ -61,8 +62,45 @@ export interface ProductStats {
   categories: ProductStatsCategoriesItem[];
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  codePrefix: string;
+  createdAt: string;
+}
+
+export interface CreateCategoryBody {
+  name: string;
+}
+
+export interface SettingItem {
+  key: string;
+  value: string;
+}
+
+export interface UpsertSettingBody {
+  value: string;
+}
+
+export interface UploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+}
+
+export interface ErrorEnvelope {
+  error: string;
+}
+
 export type ListProductsParams = {
   category?: string;
   inStock?: boolean;
   featured?: boolean;
 };
+
+export type ListSettings200 = { [key: string]: string };
