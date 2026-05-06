@@ -56,10 +56,10 @@ export default function AdminProductForm() {
   const isEditing = params.id && params.id !== "new";
   const productId = isEditing ? Number(params.id) : undefined;
 
-  const { data: product, isLoading: isLoadingProduct } = useGetProduct(productId!, {
+  const { data: product, isLoading: isLoadingProduct } = useGetProduct(productId ?? 0, {
     query: {
-      enabled: isEditing,
-      queryKey: getGetProductQueryKey(productId!)
+      enabled: !!isEditing && productId !== undefined,
+      queryKey: getGetProductQueryKey(productId ?? 0)
     }
   });
 
@@ -243,7 +243,7 @@ export default function AdminProductForm() {
               />
 
               <div className="space-y-4">
-                <FormLabel className="uppercase tracking-widest text-xs">Images</FormLabel>
+                <p className="uppercase tracking-widest text-xs font-medium">Images</p>
                 {fields.map((field, index) => (
                   <FormField
                     key={field.id}
