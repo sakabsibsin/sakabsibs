@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { StoreLayout } from "@/components/layout";
 import { ProductCard } from "@/components/product-card";
 import {
@@ -8,7 +9,6 @@ import {
   type Product,
 } from "@/lib/api-hooks";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQueryClient } from "@tanstack/react-query";
 
 const PAGE_SIZE = 20;
 const GRID = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5";
@@ -18,8 +18,11 @@ export default function Catalog() {
   const [offset, setOffset] = useState(0);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [hasMore, setHasMore] = useState(true);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   const { data: categories } = useListCategories();
 
@@ -50,6 +53,43 @@ export default function Catalog() {
     setHasMore(true);
   }, [activeCategory]);
 
+  // Scroll active tab into view when category changes
+  useEffect(() => {
+    const container = tabsRef.current;
+    if (!container) return;
+    const active = container.querySelector("[data-active='true']") as HTMLElement;
+    if (active) {
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
+      const offset = activeRect.left - containerRect.left - containerRect.width / 2 + activeRect.width / 2;
+      container.scrollBy({ left: offset, behavior: "smooth" });
+    }
+  }, [activeCategory]);
+
+  const updateScrollState = useCallback(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 8);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+  }, []);
+
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      ro.disconnect();
+    };
+  }, [updateScrollState, categories]);
+
+  const scrollTabs = (dir: "left" | "right") => {
+    tabsRef.current?.scrollBy({ left: dir === "right" ? 160 : -160, behavior: "smooth" });
+  };
+
   const loadMore = useCallback(() => {
     if (!isFetching && hasMore) {
       setOffset((prev) => prev + PAGE_SIZE);
@@ -60,9 +100,7 @@ export default function Catalog() {
     const el = sentinelRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMore();
-      },
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
       { rootMargin: "300px" }
     );
     observer.observe(el);
@@ -78,21 +116,66 @@ export default function Catalog() {
         <header className="mb-8 md:mb-12">
           <h1 className="text-3xl md:text-4xl font-serif tracking-widest mb-6 md:mb-8">Collection</h1>
 
-          <div className="flex flex-wrap gap-5 sm:gap-8 border-b border-border overflow-x-auto pb-0">
-            {allCategories.map((category) => (
+          {/* Category scroll strip */}
+          <div className="relative border-b border-border">
+
+            {/* Left fade + arrow */}
+            <div
+              className={`absolute left-0 top-0 bottom-[1px] z-10 flex items-center transition-opacity duration-300 ${canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent w-16" />
               <button
-                key={category}
-                onClick={() => handleCategoryChange(category)}
-                className={`pb-3 text-xs sm:text-sm uppercase tracking-widest transition-colors relative whitespace-nowrap
-                  ${activeCategory === category ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
-                `}
+                onClick={() => scrollTabs("left")}
+                className="relative z-10 hidden md:flex items-center justify-center w-7 h-7 text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                aria-label="Scroll left"
               >
-                {category}
-                {activeCategory === category && (
-                  <span className="absolute bottom-[-1px] left-0 right-0 h-[1px] bg-foreground" />
-                )}
+                <ChevronLeft className="w-4 h-4" />
               </button>
-            ))}
+            </div>
+
+            {/* Scrollable tabs */}
+            <div
+              ref={tabsRef}
+              className="flex items-end gap-0 overflow-x-auto scrollbar-hide scroll-smooth"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              {allCategories.map((category) => (
+                <button
+                  key={category}
+                  data-active={activeCategory === category}
+                  onClick={() => handleCategoryChange(category)}
+                  className={`
+                    relative shrink-0 pb-3 px-4 text-xs sm:text-sm uppercase tracking-widest
+                    transition-colors duration-200 whitespace-nowrap
+                    ${activeCategory === category
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                    }
+                  `}
+                >
+                  {category}
+                  {activeCategory === category && (
+                    <span className="absolute bottom-[-1px] left-3 right-3 h-[1.5px] bg-foreground rounded-full" />
+                  )}
+                </button>
+              ))}
+              {/* Trailing spacer so last item isn't flush against the fade */}
+              <span className="shrink-0 w-4" aria-hidden="true" />
+            </div>
+
+            {/* Right fade + arrow */}
+            <div
+              className={`absolute right-0 top-0 bottom-[1px] z-10 flex items-center justify-end transition-opacity duration-300 ${canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            >
+              <div className="absolute inset-0 bg-gradient-to-l from-background via-background/80 to-transparent w-16" />
+              <button
+                onClick={() => scrollTabs("right")}
+                className="relative z-10 hidden md:flex items-center justify-center w-7 h-7 text-muted-foreground hover:text-foreground transition-colors mr-0.5"
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </header>
 
