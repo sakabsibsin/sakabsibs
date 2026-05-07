@@ -11,6 +11,7 @@ import Catalog from "./pages/catalog";
 import ProductDetail from "./pages/product-detail";
 import AdminLogin from "./pages/admin-login";
 import AdminDashboard from "./pages/admin-dashboard";
+import AdminProducts from "./pages/admin-products";
 import AdminProductForm from "./pages/admin-product-form";
 import AdminCategories from "./pages/admin-categories";
 import AdminSettings from "./pages/admin-settings";
@@ -42,6 +43,11 @@ function Router() {
         <Route path="/admin/products/new">
           <ProtectedAdminRoute>
             <AdminProductForm />
+          </ProtectedAdminRoute>
+        </Route>
+        <Route path="/admin/products">
+          <ProtectedAdminRoute>
+            <AdminProducts />
           </ProtectedAdminRoute>
         </Route>
         <Route path="/admin/products/:id/edit">

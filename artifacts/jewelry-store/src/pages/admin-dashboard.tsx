@@ -1,93 +1,42 @@
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
+import { Package, PlusCircle, Tag, Settings, ArrowRight } from "lucide-react";
 import { AdminLayout } from "@/components/layout";
-import {
-  useGetProductStats,
-  useListProducts,
-  useToggleProductStock,
-  useDeleteProduct,
-  getListProductsQueryKey,
-  getGetProductStatsQueryKey,
-} from "@/lib/api-hooks";
+import { useGetProductStats, useListProducts } from "@/lib/api-hooks";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 export default function AdminDashboard() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
-
   const { data: stats, isLoading: statsLoading } = useGetProductStats();
-  const { data: products, isLoading: productsLoading } = useListProducts();
+  const { data: products, isLoading: productsLoading } = useListProducts({ limit: 5 });
 
-  const toggleStock = useToggleProductStock();
-  const deleteProduct = useDeleteProduct();
+  const statCards = [
+    { label: "Total Products", value: stats?.total },
+    { label: "In Stock", value: stats?.inStock },
+    { label: "Out of Stock", value: stats?.outOfStock },
+    { label: "Featured", value: stats?.featured },
+  ];
 
-  const handleToggleStock = (id: string, inStock: boolean) => {
-    toggleStock.mutate(
-      { id, data: { inStock } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
-          toast({ title: "Stock updated", description: "Product stock status has been updated." });
-        },
-        onError: () => {
-          toast({ title: "Error", description: "Failed to update stock.", variant: "destructive" });
-        },
-      }
-    );
-  };
-
-  const handleDelete = (id: string) => {
-    deleteProduct.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
-          toast({ title: "Product deleted", description: "The product has been removed." });
-        },
-        onError: () => {
-          toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" });
-        },
-      }
-    );
-  };
+  const quickLinks = [
+    { href: "/admin/products/new", icon: PlusCircle, label: "Add Product", desc: "Add a new piece to the catalog" },
+    { href: "/admin/products", icon: Package, label: "Manage Products", desc: "Search, filter, edit and delete products" },
+    { href: "/admin/categories", icon: Tag, label: "Categories", desc: "Manage jewelry categories" },
+    { href: "/admin/settings", icon: Settings, label: "Settings", desc: "WhatsApp number and store settings" },
+  ];
 
   return (
     <AdminLayout>
       <div className="space-y-8">
+
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-serif tracking-wide mb-2">Dashboard</h1>
-          <p className="text-muted-foreground text-sm">Overview of your jewelry catalog.</p>
+          <h1 className="text-3xl font-serif tracking-wide mb-1">Dashboard</h1>
+          <p className="text-muted-foreground text-sm">Overview of your Aurum jewelry catalog.</p>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Total Products", value: stats?.total },
-            { label: "In Stock", value: stats?.inStock },
-            { label: "Out of Stock", value: stats?.outOfStock },
-            { label: "Featured", value: stats?.featured },
-          ].map((stat, i) => (
-            <div key={i} className="bg-card p-6 border border-border">
-              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">{stat.label}</p>
+          {statCards.map((stat, i) => (
+            <div key={i} className="bg-card p-5 md:p-6 border border-border">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-2">{stat.label}</p>
               {statsLoading ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
@@ -97,134 +46,73 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Products Table */}
-        <div className="bg-card border border-border">
-          <div className="p-4 md:p-6 border-b border-border flex justify-between items-center gap-4 flex-wrap">
-            <h2 className="text-xl font-serif tracking-wide">All Products</h2>
-            <Button asChild className="bg-foreground text-background hover:bg-foreground/90 rounded-none uppercase tracking-widest text-xs h-10 px-6">
-              <Link href="/admin/products/new">Add Product</Link>
-            </Button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[64px]">Image</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">Code</TableHead>
-                  <TableHead className="hidden md:table-cell">Category</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {productsLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-12 w-12" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : products?.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground font-serif italic">
-                      No products found. Add your first piece.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  products?.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div className="h-12 w-12 bg-muted border border-border overflow-hidden shrink-0">
-                          {product.images?.[0] && (
-                            <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium max-w-[140px]">
-                        <span className="line-clamp-2">{product.name}</span>
-                        {product.featured && (
-                          <span className="ml-0 mt-1 block text-[10px] uppercase tracking-widest bg-muted px-2 py-0.5 border border-border w-fit">
-                            Featured
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground text-xs font-mono">
-                        {product.productCode}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell capitalize text-muted-foreground text-sm">
-                        {product.category}
-                      </TableCell>
-                      <TableCell className="text-sm whitespace-nowrap">
-                        ₹{product.price.toLocaleString("en-IN")}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={product.inStock}
-                            onCheckedChange={(checked) => handleToggleStock(product.id, checked)}
-                            disabled={toggleStock.isPending}
-                          />
-                          <span className="text-xs uppercase tracking-widest text-muted-foreground hidden lg:block">
-                            {product.inStock ? "In Stock" : "Out"}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="rounded-none border-border h-8 w-8"
-                            onClick={() => setLocation(`/admin/products/${product.id}/edit`)}
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground h-8 w-8"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="rounded-none border-border">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="font-serif">Delete Product</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{product.name}"? This cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="rounded-none uppercase tracking-widest text-xs">Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(product.id)}
-                                  className="rounded-none uppercase tracking-widest text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+        {/* Quick actions */}
+        <div>
+          <h2 className="text-sm uppercase tracking-widest text-muted-foreground mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {quickLinks.map(({ href, icon: Icon, label, desc }) => (
+              <Link key={href} href={href}>
+                <div className="flex items-start gap-4 p-5 border border-border bg-card hover:border-foreground/30 transition-colors cursor-pointer group">
+                  <Icon className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0 group-hover:text-foreground transition-colors" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium tracking-wide">{label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5 group-hover:text-muted-foreground transition-colors" />
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
+
+        {/* Recent products preview */}
+        <div className="bg-card border border-border">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-base font-serif tracking-wide">Recent Products</h2>
+            <Link href="/admin/products" className="text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              View All <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="divide-y divide-border">
+            {productsLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-3">
+                  <Skeleton className="h-10 w-10 shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-3.5 w-16" />
+                </div>
+              ))
+            ) : products?.length === 0 ? (
+              <div className="px-5 py-8 text-center text-muted-foreground font-serif italic text-sm">
+                No products yet. Add your first piece.
+              </div>
+            ) : (
+              products?.map((product) => (
+                <div key={product.id} className="flex items-center gap-3 px-5 py-3">
+                  <div className="h-10 w-10 bg-muted border border-border overflow-hidden shrink-0">
+                    {product.images?.[0] && (
+                      <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{product.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{product.category} · {product.productCode}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm whitespace-nowrap">₹{product.price.toLocaleString("en-IN")}</p>
+                    <p className={`text-[10px] uppercase tracking-widest mt-0.5 ${product.inStock ? "text-muted-foreground" : "text-destructive"}`}>
+                      {product.inStock ? "In Stock" : "Sold Out"}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
       </div>
     </AdminLayout>
   );

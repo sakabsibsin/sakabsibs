@@ -1,0 +1,85 @@
+Implement the following UI/UX and admin experience improvements in the existing ShopFlo project without rebuilding the architecture or changing the current design style completely.
+
+The goal is to make the platform cleaner, more professional, easier to manage for admins, and smoother for users on both mobile and desktop.
+
+1. Improve Single Product Page Layout
+   Current issue:
+   The product image and layout sizing on both mobile and desktop do not feel standard or properly balanced.
+
+Requirements:
+
+* Improve the product detail page layout
+* Make product image sizing more professional and standard
+* Improve spacing and alignment
+* Ensure image proportions stay consistent
+* Improve responsiveness on:
+
+  * Mobile
+  * Tablet
+  * Desktop
+* Make the layout feel more premium and ecommerce-standard
+* Prevent layout shifting/jumping
+
+2. Hide Admin Button for Normal Users
+   Current issue:
+   The Admin button is visible for all users.
+
+Requirements:
+
+* Show Admin button in navbar only if admin is logged in
+* If normal users visit the site, do not show admin button
+* If admin is logged in and viewing frontend/user side, then show admin button
+* Ensure auth state works properly after refresh
+
+3. Fix Admin Mobile Dropdown/Toggle UI
+   Current issue:
+   When opening the admin menu toggle/dropdown, the entire dashboard content moves downward.
+
+Requirements:
+
+* Make dropdown/menu open as an overlay
+* Position it properly at top-right
+* Prevent dashboard layout from shifting
+* Make it smooth and responsive
+* Improve mobile admin UX
+
+4. Add Search in Admin Dashboard
+   Requirements:
+
+* Add product search functionality inside admin dashboard
+* Allow searching by:
+
+  * Product name
+  * Category
+* Keep search fast and responsive
+* Add proper empty state if no products found
+
+5. Create Separate Product Listing Management Page
+   Requirements:
+
+* Create a dedicated admin products page
+* Show all products in clean listing/table/card layout
+* Keep it separated from dashboard overview widgets
+* Add:
+
+  * Search
+  * Pagination or smooth loading
+  * Product actions (edit/delete)
+* Make management cleaner and less cluttered
+
+6. Add Category-wise Product Filtering
+   Requirements:
+
+* Add category filter option in product management page
+* Admin should be able to quickly view products category-wise
+* Keep filtering smooth and simple
+* Improve overall product management flow
+
+Important:
+
+* Keep the current design language
+* Do not overengineer
+* Focus on smooth UX and easy admin handling
+* Keep everything responsive and mobile-friendly
+* Ensure the flow feels simple and non-confusing for non-technical users
+* Reuse existing components and architecture wherever possible
