@@ -11,6 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+function validateWhatsApp(number: string): string | null {
+  const digits = number.replace(/\D/g, "");
+  if (!digits) return "WhatsApp number is required.";
+  if (digits.length < 10) return "Enter a valid number with country code, e.g. +919876543210";
+  return null;
+}
+
 export default function AdminSettings() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -19,6 +26,7 @@ export default function AdminSettings() {
   const upsertSetting = useUpsertSetting();
 
   const [whatsapp, setWhatsapp] = useState("");
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings?.["whatsapp_number"]) {
@@ -28,6 +36,13 @@ export default function AdminSettings() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const error = validateWhatsApp(whatsapp);
+    if (error) {
+      setWhatsappError(error);
+      return;
+    }
+    setWhatsappError(null);
+
     upsertSetting.mutate(
       { key: "whatsapp_number", data: { value: whatsapp.trim() } },
       {
@@ -58,25 +73,27 @@ export default function AdminSettings() {
               <Label className="uppercase tracking-widest text-xs">WhatsApp Number</Label>
               <Input
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
+                onChange={(e) => {
+                  setWhatsapp(e.target.value);
+                  if (whatsappError) setWhatsappError(null);
+                }}
                 placeholder="+91 98765 43210"
                 disabled={isLoading}
-                className="rounded-none border-border focus-visible:ring-1 focus-visible:ring-foreground"
+                className={`rounded-none focus-visible:ring-1 focus-visible:ring-foreground ${whatsappError ? "border-destructive" : "border-border"}`}
               />
-              <p className="text-xs text-muted-foreground">
-                Include country code, e.g. +919876543210. Customers will be directed to this number when they tap "Enquire / Order via WhatsApp".
-              </p>
+              {whatsappError ? (
+                <p className="text-xs text-destructive">{whatsappError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Include country code, e.g. +919876543210. Customers will be directed here when they tap "Enquire via WhatsApp".
+                </p>
+              )}
             </div>
 
             <div className="border-t border-border pt-6">
               <p className="text-xs text-muted-foreground mb-4 font-medium uppercase tracking-widest">Message Preview</p>
               <div className="bg-muted/50 border border-border p-4 text-xs font-mono text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {`Hi, I want to enquire about this product.
-
-Product Name: [Product Name]
-Product Code: [e.g. BA101]
-Price: ₹[Price]
-Product Link: [Product URL]`}
+                {`Hi, I want to enquire about this product.\n\nProduct Name: [Product Name]\nProduct Code: [e.g. BA101]\nPrice: ₹[Price]\nProduct Link: [Product URL]`}
               </div>
             </div>
 
@@ -84,7 +101,7 @@ Product Link: [Product URL]`}
               <Button
                 type="submit"
                 disabled={upsertSetting.isPending || isLoading}
-                className="rounded-none bg-foreground text-background hover:bg-foreground/90 uppercase tracking-widest text-xs h-12 px-8"
+                className="rounded-none bg-foreground text-background hover:bg-foreground/90 uppercase tracking-widest text-xs h-12 px-8 transition-colors duration-200"
               >
                 {upsertSetting.isPending ? "Saving..." : "Save Settings"}
               </Button>

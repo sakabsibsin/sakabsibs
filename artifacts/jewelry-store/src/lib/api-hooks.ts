@@ -3,6 +3,9 @@ import {
   useMutation,
   type UseQueryOptions,
 } from "@tanstack/react-query";
+import { productService } from "@/services/productService";
+import { categoryService } from "@/services/categoryService";
+import { settingsService } from "@/services/settingsService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,23 +59,6 @@ export type CreateProductBody = {
 
 export type UpdateProductBody = Partial<CreateProductBody>;
 
-// ─── Base fetch ───────────────────────────────────────────────────────────────
-
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw Object.assign(new Error(err.error || "Request failed"), {
-      response: { data: err },
-    });
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json();
-}
-
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
 export const getListProductsQueryKey = (params: ListProductsParams = {}) =>
@@ -96,17 +82,9 @@ export function useListProducts(
   params: ListProductsParams = {},
   options?: { query?: Partial<UseQueryOptions<Product[]>> }
 ) {
-  const qs = new URLSearchParams();
-  if (params.category) qs.set("category", params.category);
-  if (params.inStock !== undefined) qs.set("inStock", String(params.inStock));
-  if (params.featured !== undefined) qs.set("featured", String(params.featured));
-  if (params.limit !== undefined) qs.set("limit", String(params.limit));
-  if (params.offset !== undefined) qs.set("offset", String(params.offset));
-  const query = qs.toString();
-
   return useQuery<Product[]>({
     queryKey: getListProductsQueryKey(params),
-    queryFn: () => apiFetch<Product[]>(`/products${query ? `?${query}` : ""}`),
+    queryFn: () => productService.list(params),
     ...options?.query,
   });
 }
@@ -117,7 +95,7 @@ export function useGetProduct(
 ) {
   return useQuery<Product>({
     queryKey: getGetProductQueryKey(id),
-    queryFn: () => apiFetch<Product>(`/products/${id}`),
+    queryFn: () => productService.get(id),
     enabled: !!id,
     ...options?.query,
   });
@@ -128,7 +106,7 @@ export function useGetFeaturedProducts(
 ) {
   return useQuery<Product[]>({
     queryKey: ["products-featured"],
-    queryFn: () => apiFetch<Product[]>("/products/featured"),
+    queryFn: () => productService.featured(),
     ...options?.query,
   });
 }
@@ -138,42 +116,32 @@ export function useGetProductStats(
 ) {
   return useQuery<ProductStats>({
     queryKey: getGetProductStatsQueryKey(),
-    queryFn: () => apiFetch<ProductStats>("/products/stats"),
+    queryFn: () => productService.stats(),
     ...options?.query,
   });
 }
 
 export function useCreateProduct() {
   return useMutation<Product, Error, { data: CreateProductBody }>({
-    mutationFn: ({ data }) =>
-      apiFetch<Product>("/products", { method: "POST", body: JSON.stringify(data) }),
+    mutationFn: ({ data }) => productService.create(data),
   });
 }
 
 export function useUpdateProduct() {
   return useMutation<Product, Error, { id: string; data: UpdateProductBody }>({
-    mutationFn: ({ id, data }) =>
-      apiFetch<Product>(`/products/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: ({ id, data }) => productService.update(id, data),
   });
 }
 
 export function useDeleteProduct() {
   return useMutation<void, Error, { id: string }>({
-    mutationFn: ({ id }) =>
-      apiFetch<void>(`/products/${id}`, { method: "DELETE" }),
+    mutationFn: ({ id }) => productService.remove(id),
   });
 }
 
 export function useToggleProductStock() {
   return useMutation<Product, Error, { id: string; data: { inStock: boolean } }>({
-    mutationFn: ({ id, data }) =>
-      apiFetch<Product>(`/products/${id}/stock`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: ({ id, data }) => productService.toggleStock(id, data.inStock),
   });
 }
 
@@ -184,25 +152,20 @@ export function useListCategories(
 ) {
   return useQuery<Category[]>({
     queryKey: getListCategoriesQueryKey(),
-    queryFn: () => apiFetch<Category[]>("/categories"),
+    queryFn: () => categoryService.list(),
     ...options?.query,
   });
 }
 
 export function useCreateCategory() {
   return useMutation<Category, Error, { data: { name: string } }>({
-    mutationFn: ({ data }) =>
-      apiFetch<Category>("/categories", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: ({ data }) => categoryService.create(data.name),
   });
 }
 
 export function useDeleteCategory() {
   return useMutation<void, Error, { id: string }>({
-    mutationFn: ({ id }) =>
-      apiFetch<void>(`/categories/${id}`, { method: "DELETE" }),
+    mutationFn: ({ id }) => categoryService.remove(id),
   });
 }
 
@@ -213,7 +176,7 @@ export function useListSettings(
 ) {
   return useQuery<Record<string, string>>({
     queryKey: getListSettingsQueryKey(),
-    queryFn: () => apiFetch<Record<string, string>>("/settings"),
+    queryFn: () => settingsService.list(),
     ...options?.query,
   });
 }
@@ -224,26 +187,6 @@ export function useUpsertSetting() {
     Error,
     { key: string; data: { value: string } }
   >({
-    mutationFn: ({ key, data }) =>
-      apiFetch<{ key: string; value: string }>(`/settings/${key}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
-  });
-}
-
-// ─── Storage Hook ─────────────────────────────────────────────────────────────
-
-export function useRequestUploadUrl() {
-  return useMutation<
-    { uploadURL: string; objectPath: string },
-    Error,
-    { name: string; size: number; contentType: string }
-  >({
-    mutationFn: (data) =>
-      apiFetch<{ uploadURL: string; objectPath: string }>(
-        "/storage/uploads/request-url",
-        { method: "POST", body: JSON.stringify(data) }
-      ),
+    mutationFn: ({ key, data }) => settingsService.upsert(key, data.value),
   });
 }

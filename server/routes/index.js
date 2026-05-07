@@ -6,6 +6,7 @@ router.use(require('./categoryRoutes'));
 router.use(require('./settingRoutes'));
 router.use(require('./authRoutes'));
 router.use(require('./storageRoutes'));
+router.use(require('./uploadRoutes'));
 
 router.get('/healthz', (_req, res) => res.json({ status: 'ok' }));
 

@@ -1,35 +1,18 @@
 import { useState, useRef } from "react";
-import { Plus, X, ImageIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Plus, X } from "lucide-react";
+import { uploadImage } from "@/services/uploadService";
+import { useToast } from "@/hooks/use-toast";
 
 interface ImageUploadProps {
   value: string[];
   onChange: (urls: string[]) => void;
 }
 
-async function uploadImageFile(file: File): Promise<string> {
-  const res = await fetch("/api/storage/uploads/request-url", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-  });
-  if (!res.ok) throw new Error("Failed to get upload URL");
-  const { uploadURL, objectPath } = await res.json();
-
-  const uploadRes = await fetch(uploadURL, {
-    method: "PUT",
-    headers: { "Content-Type": file.type },
-    body: file,
-  });
-  if (!uploadRes.ok) throw new Error("Failed to upload image");
-
-  return `/api/storage${objectPath}`;
-}
-
 export function ImageUpload({ value, onChange }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [previews, setPreviews] = useState<Record<number, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,19 +21,20 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
     const localPreview = URL.createObjectURL(file);
     const newIndex = value.length;
     setPreviews((prev) => ({ ...prev, [newIndex]: localPreview }));
-
     setUploading(true);
+
     try {
-      const url = await uploadImageFile(file);
-      const updated = [...value, url];
-      onChange(updated);
+      const url = await uploadImage(file);
+      onChange([...value, url]);
       setPreviews((prev) => {
         const next = { ...prev };
         delete next[newIndex];
         URL.revokeObjectURL(localPreview);
         return next;
       });
-    } catch {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      toast({ title: "Upload failed", description: message, variant: "destructive" });
       setPreviews((prev) => {
         const next = { ...prev };
         delete next[newIndex];
@@ -80,10 +64,10 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
             <img
               src={img.src}
               alt={`Image ${i + 1}`}
-              className={`w-full h-full object-cover ${img.isPending ? "opacity-50" : ""}`}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${img.isPending ? "opacity-40" : "opacity-100"}`}
             />
             {img.isPending && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+              <div className="absolute inset-0 flex items-center justify-center bg-background/30">
                 <div className="w-5 h-5 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
               </div>
             )}
@@ -91,7 +75,7 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
               <button
                 type="button"
                 onClick={() => removeImage(i)}
-                className="absolute top-1 right-1 bg-background/80 border border-border p-0.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                className="absolute top-1.5 right-1.5 bg-background/90 border border-border p-1 hover:bg-destructive hover:text-destructive-foreground transition-colors duration-200"
                 data-testid={`button-remove-image-${i}`}
               >
                 <X className="h-3 w-3" />
@@ -104,7 +88,7 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="aspect-square border border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-foreground transition-colors disabled:opacity-50"
+          className="aspect-square border border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-foreground transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
           data-testid="button-add-image"
         >
           {uploading ? (
