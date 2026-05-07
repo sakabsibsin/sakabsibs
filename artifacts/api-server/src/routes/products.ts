@@ -38,11 +38,16 @@ router.get("/products", async (req, res): Promise<void> => {
     conditions.push(eq(productsTable.featured, query.data.featured));
   }
 
+  const limit = query.data.limit ?? 100;
+  const offset = query.data.offset ?? 0;
+
   const products = await db
     .select()
     .from(productsTable)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(productsTable.createdAt);
+    .orderBy(productsTable.createdAt)
+    .limit(limit)
+    .offset(offset);
 
   res.json(ListProductsResponse.parse(products));
 });

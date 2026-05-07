@@ -12,21 +12,22 @@ export default function Home() {
   return (
     <StoreLayout>
       {/* Hero Section */}
-      <section className="relative h-[calc(100dvh-4rem)] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-muted -z-10">
-          <img
-            src="https://images.unsplash.com/photo-1599643478514-4a4e09b5220c?q=80&w=2940&auto=format&fit=crop"
-            alt="Aurum Jewelry Collection"
-            className="w-full h-full object-cover opacity-90"
-          />
-        </div>
-        <div className="text-center z-10 p-8 bg-background/50 backdrop-blur-sm border border-border/50">
-          <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-[0.1em] text-foreground font-serif">AURUM</h1>
-          <p className="mt-6 text-sm md:text-base tracking-[0.2em] uppercase text-foreground/80">Whisper-quiet luxury</p>
-          <div className="mt-12">
-            <Link href="/products" className="inline-block border border-foreground px-8 py-3 text-sm uppercase tracking-widest hover:bg-foreground hover:text-background transition-colors duration-500">
-              Discover the Collection
-            </Link>
+      <section className="relative h-[calc(100dvh-4rem)] overflow-hidden bg-muted">
+        <img
+          src="https://images.unsplash.com/photo-1599643478514-4a4e09b5220c?q=80&w=2940&auto=format&fit=crop"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover object-center opacity-90"
+        />
+        <div className="relative z-10 flex items-center justify-center h-full px-4">
+          <div className="text-center p-8 sm:p-12 bg-background/50 backdrop-blur-sm border border-border/50">
+            <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-[0.1em] text-foreground font-serif">AURUM</h1>
+            <p className="mt-6 text-sm md:text-base tracking-[0.2em] uppercase text-foreground/80">Whisper-quiet luxury</p>
+            <div className="mt-10 md:mt-12">
+              <Link href="/products" className="inline-block border border-foreground px-8 py-3 text-sm uppercase tracking-widest hover:bg-foreground hover:text-background transition-colors duration-500">
+                Discover the Collection
+              </Link>
+            </div>
           </div>
         </div>
       </section>

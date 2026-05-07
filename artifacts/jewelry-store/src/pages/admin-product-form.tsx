@@ -214,7 +214,7 @@ export default function AdminProductForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="uppercase tracking-widest text-xs">Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select key={field.value || "__empty__"} onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="rounded-none border-border focus:ring-1 focus:ring-foreground">
                             <SelectValue placeholder="Select category" />

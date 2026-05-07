@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 export function Navbar() {
   return (
@@ -27,15 +28,18 @@ export function Navbar() {
 
 export function Footer() {
   return (
-    <footer className="bg-background border-t border-border mt-32 py-16">
-      <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-8">
-        <div className="font-serif text-2xl tracking-widest">AURUM</div>
-        <div className="text-sm text-muted-foreground font-light">
+    <footer className="bg-background border-t border-border mt-8 py-6">
+      <div className="container mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="font-serif text-xl tracking-widest">AURUM</div>
+        <div className="text-xs text-muted-foreground font-light tracking-wide">
           Whisper-quiet luxury.
         </div>
-        <div className="flex gap-6 text-sm uppercase tracking-widest">
-          <a href="#" className="hover:text-muted-foreground transition-colors">Instagram</a>
-          <a href="#" className="hover:text-muted-foreground transition-colors">Contact</a>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex gap-4 text-xs uppercase tracking-widest">
+            <a href="#" className="hover:text-muted-foreground transition-colors">Instagram</a>
+            <a href="#" className="hover:text-muted-foreground transition-colors">Contact</a>
+          </div>
+          <span className="text-[10px] text-muted-foreground/50 tracking-wide">Powered by ShopFlo</span>
         </div>
       </div>
     </footer>
@@ -60,8 +64,14 @@ const adminLinks = [
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { logout } = useAdminAuth();
+
+  const handleLogout = () => {
+    logout();
+    setLocation("/admin/login");
+  };
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-muted/20">
@@ -85,6 +95,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             <Link href="/products" className="text-sm text-muted-foreground hover:text-foreground hidden md:block">
               View Store &rarr;
             </Link>
+            <button
+              onClick={handleLogout}
+              className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
+              title="Logout"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Logout
+            </button>
             <button
               className="md:hidden p-2 -mr-2"
               onClick={() => setMenuOpen((o) => !o)}
@@ -116,6 +134,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               >
                 View Store &rarr;
               </Link>
+              <button
+                onClick={() => { setMenuOpen(false); handleLogout(); }}
+                className="py-2 text-sm text-muted-foreground text-left flex items-center gap-2"
+              >
+                <LogOut className="h-3.5 w-3.5" /> Logout
+              </button>
             </nav>
           </div>
         )}

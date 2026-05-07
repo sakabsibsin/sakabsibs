@@ -17,10 +17,15 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List all products
  */
+export const listProductsQueryLimitDefault = 100;
+export const listProductsQueryOffsetDefault = 0;
+
 export const ListProductsQueryParams = zod.object({
   category: zod.coerce.string().optional(),
   inStock: zod.coerce.boolean().optional(),
   featured: zod.coerce.boolean().optional(),
+  limit: zod.coerce.number().default(listProductsQueryLimitDefault),
+  offset: zod.coerce.number().default(listProductsQueryOffsetDefault),
 });
 
 export const ListProductsResponseItem = zod.object({

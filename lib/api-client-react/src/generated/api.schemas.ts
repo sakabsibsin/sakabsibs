@@ -101,6 +101,8 @@ export type ListProductsParams = {
   category?: string;
   inStock?: boolean;
   featured?: boolean;
+  limit?: number;
+  offset?: number;
 };
 
 export type ListSettings200 = { [key: string]: string };

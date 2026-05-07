@@ -22,12 +22,15 @@ export default function ProductDetail() {
   if (isLoading) {
     return (
       <StoreLayout>
-        <div className="container mx-auto px-4 py-16 grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <Skeleton className="aspect-[3/4] w-full rounded-none" />
-          <div className="space-y-8 pt-8">
-            <Skeleton className="h-10 w-2/3 rounded-none" />
-            <Skeleton className="h-6 w-1/3 rounded-none" />
-            <Skeleton className="h-32 w-full rounded-none" />
+        <div className="container mx-auto px-4 py-12 md:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+            <Skeleton className="aspect-[3/4] w-full rounded-none" />
+            <div className="space-y-6 pt-2">
+              <Skeleton className="h-8 w-2/3 rounded-none" />
+              <Skeleton className="h-5 w-1/4 rounded-none" />
+              <Skeleton className="h-24 w-full rounded-none" />
+              <Skeleton className="h-12 w-full rounded-none" />
+            </div>
           </div>
         </div>
       </StoreLayout>
@@ -64,89 +67,86 @@ export default function ProductDetail() {
 
   return (
     <StoreLayout>
-      <div className="container mx-auto px-4 py-16 lg:py-24">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
+      <div className="container mx-auto px-4 py-12 md:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
 
           {/* Images */}
           <div className="space-y-3">
-            {images.length > 0 ? (
-              <>
-                <div className="aspect-[3/4] w-full bg-muted border border-border overflow-hidden">
-                  <img
-                    src={images[activeImage]}
-                    alt={`${product.name} view ${activeImage + 1}`}
-                    className="w-full h-full object-cover transition-opacity duration-300"
-                  />
+            <div className="aspect-[3/4] w-full bg-muted border border-border overflow-hidden">
+              {images.length > 0 ? (
+                <img
+                  key={activeImage}
+                  src={images[activeImage]}
+                  alt={`${product.name} view ${activeImage + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-muted-foreground font-serif italic text-sm">No image available</span>
                 </div>
-                {images.length > 1 && (
-                  <div className="flex gap-2">
-                    {images.map((img, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setActiveImage(i)}
-                        className={`w-16 h-16 border overflow-hidden shrink-0 transition-all ${
-                          i === activeImage ? "border-foreground" : "border-border opacity-60 hover:opacity-100"
-                        }`}
-                      >
-                        <img src={img} alt="" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="aspect-[3/4] w-full bg-muted flex items-center justify-center border border-border">
-                <span className="text-muted-foreground font-serif italic">No image available</span>
+              )}
+            </div>
+            {images.length > 1 && (
+              <div className="flex gap-2 flex-wrap">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveImage(i)}
+                    className={`w-14 h-14 border overflow-hidden shrink-0 transition-all ${
+                      i === activeImage ? "border-foreground" : "border-border opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Details */}
-          <div className="lg:sticky lg:top-32 self-start space-y-12">
+          {/* Details — no sticky to prevent layout shift */}
+          <div className="space-y-8">
             <div>
               <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">{product.productCode}</p>
-              <h1 className="text-4xl font-serif tracking-wide mb-4">{product.name}</h1>
+              <h1 className="text-3xl md:text-4xl font-serif tracking-wide mb-4 leading-snug">{product.name}</h1>
               <p className="text-xl tracking-wider">
                 ₹{product.price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
 
-            <div className="space-y-6 text-sm leading-relaxed text-foreground/80">
+            <div className="space-y-4 text-sm leading-relaxed text-foreground/80">
               <p>{product.description}</p>
 
-              <ul className="space-y-2 border-t border-border pt-6 mt-6">
+              <ul className="space-y-2 border-t border-border pt-5">
                 <li className="flex gap-4">
-                  <span className="text-muted-foreground w-24 uppercase tracking-widest text-xs">Material</span>
+                  <span className="text-muted-foreground w-24 uppercase tracking-widest text-xs shrink-0">Material</span>
                   <span className="capitalize">{product.material}</span>
                 </li>
                 <li className="flex gap-4">
-                  <span className="text-muted-foreground w-24 uppercase tracking-widest text-xs">Category</span>
+                  <span className="text-muted-foreground w-24 uppercase tracking-widest text-xs shrink-0">Category</span>
                   <span className="capitalize">{product.category}</span>
                 </li>
                 <li className="flex gap-4">
-                  <span className="text-muted-foreground w-24 uppercase tracking-widest text-xs">Code</span>
-                  <span>{product.productCode}</span>
+                  <span className="text-muted-foreground w-24 uppercase tracking-widest text-xs shrink-0">Code</span>
+                  <span className="font-mono">{product.productCode}</span>
                 </li>
                 <li className="flex gap-4">
-                  <span className="text-muted-foreground w-24 uppercase tracking-widest text-xs">Status</span>
+                  <span className="text-muted-foreground w-24 uppercase tracking-widest text-xs shrink-0">Status</span>
                   <span>{product.inStock ? "In Stock" : "Sold Out"}</span>
                 </li>
               </ul>
             </div>
 
-            <div className="pt-4">
-              <button
-                onClick={handleOrder}
-                disabled={!product.inStock}
-                className={`w-full py-4 text-sm uppercase tracking-widest border transition-colors duration-500
-                  ${product.inStock
-                    ? "bg-foreground text-background border-foreground hover:bg-background hover:text-foreground"
-                    : "bg-muted text-muted-foreground border-border cursor-not-allowed"}
-                `}
-              >
-                {product.inStock ? "Enquire / Order via WhatsApp" : "Sold Out"}
-              </button>
-            </div>
+            <button
+              onClick={handleOrder}
+              disabled={!product.inStock}
+              className={`w-full py-4 text-sm uppercase tracking-widest border transition-colors duration-500
+                ${product.inStock
+                  ? "bg-foreground text-background border-foreground hover:bg-background hover:text-foreground"
+                  : "bg-muted text-muted-foreground border-border cursor-not-allowed"}
+              `}
+            >
+              {product.inStock ? "Enquire / Order via WhatsApp" : "Sold Out"}
+            </button>
           </div>
 
         </div>
