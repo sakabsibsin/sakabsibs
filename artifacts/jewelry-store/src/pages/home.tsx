@@ -14,7 +14,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative h-[calc(100dvh-4rem)] overflow-hidden bg-muted">
         <img
-          src="https://images.unsplash.com/photo-1599643478514-4a4e09b5220c?q=80&w=2940&auto=format&fit=crop"
+          src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=2940&auto=format&fit=crop"
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover object-center opacity-90"
