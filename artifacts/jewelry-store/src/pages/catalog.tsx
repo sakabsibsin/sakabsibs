@@ -132,7 +132,7 @@ export default function Catalog() {
           <h1 className="text-3xl md:text-4xl font-serif tracking-widest mb-6 md:mb-8">Collection</h1>
 
           {/* Category scroll strip */}
-          <div className="relative border-b border-border">
+          <div className="relative border-b border-border overflow-x-hidden">
 
             {/* Left fade + arrow */}
             <div

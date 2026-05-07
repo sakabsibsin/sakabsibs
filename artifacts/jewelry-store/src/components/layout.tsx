@@ -48,9 +48,9 @@ export function Footer() {
 
 export function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-[100dvh] flex flex-col pt-16">
+    <div className="min-h-[100dvh] flex flex-col pt-16 overflow-x-hidden w-full">
       <Navbar />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 min-w-0">{children}</main>
       <Footer />
     </div>
   );
