@@ -90,6 +90,21 @@ export default function Catalog() {
     tabsRef.current?.scrollBy({ left: dir === "right" ? 160 : -160, behavior: "smooth" });
   };
 
+  // Intercept vertical wheel/trackpad events and redirect to horizontal scroll.
+  // Must be non-passive so we can call preventDefault() to stop page scroll.
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      // If the gesture is already clearly horizontal, let it pass through
+      if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, []);
+
   const loadMore = useCallback(() => {
     if (!isFetching && hasMore) {
       setOffset((prev) => prev + PAGE_SIZE);
@@ -136,8 +151,12 @@ export default function Catalog() {
             {/* Scrollable tabs */}
             <div
               ref={tabsRef}
-              className="flex items-end gap-0 overflow-x-auto scrollbar-hide scroll-smooth"
-              style={{ WebkitOverflowScrolling: "touch" }}
+              className="flex items-end gap-0 overflow-x-auto scrollbar-hide"
+              style={{
+                overflowY: "hidden",
+                touchAction: "pan-x",
+                WebkitOverflowScrolling: "touch",
+              }}
             >
               {allCategories.map((category) => (
                 <button
