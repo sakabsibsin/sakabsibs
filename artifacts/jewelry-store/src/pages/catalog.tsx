@@ -129,7 +129,7 @@ export default function Catalog() {
     <StoreLayout>
       <div className="container mx-auto px-3 sm:px-4 md:px-8 py-10 md:py-14">
         <header className="md:mb-12 mb-[20px]">
-          <h1 className="text-3xl md:text-4xl font-serif tracking-widest mb-6 md:mb-8">Collection</h1>
+          <h1 className="text-3xl md:text-4xl font-serif tracking-widest md:mb-8 mb-[20px]">Collection</h1>
 
           {/* Category scroll strip */}
           <div className="relative border-b border-border overflow-x-hidden">
