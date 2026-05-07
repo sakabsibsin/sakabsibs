@@ -5,7 +5,7 @@ import {
   useCreateCategory,
   useDeleteCategory,
   getListCategoriesQueryKey,
-} from "@workspace/api-client-react";
+} from "@/lib/api-hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";

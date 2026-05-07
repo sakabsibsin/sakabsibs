@@ -4,55 +4,64 @@ A luxury minimal mobile-first e-commerce catalog website for an Instagram jewelr
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080, served at `/api`)
-- `pnpm --filter @workspace/jewelry-store run dev` — run the frontend (served at `/`)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+**Replit workflows (pnpm monorepo):**
+- `artifacts/api-server: API Server` — Express+MongoDB server on port 8080 (`/api`)
+- `artifacts/jewelry-store: web` — React+Vite frontend on port 23096 (`/`)
+
+**Standalone MERN (npm workspaces):**
+- `npm install && npm run dev` from root — starts both server and client via concurrently
+
+**Seeding:**
+- `cd server && node seed.js` — seeds MongoDB with 6 categories + 15 products + WhatsApp setting
+
+**Required env:**
+- `MONGODB_URI` — MongoDB Atlas connection string (set in `server/.env` or as env var)
+- `DEFAULT_OBJECT_STORAGE_BUCKET_ID` — Replit object storage (for image uploads)
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- Frontend: React + Vite, Tailwind CSS, wouter routing, shadcn/ui, Cormorant Garamond + Inter fonts
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM (tables: `products`, `categories`, `settings`)
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Root: npm workspaces (`server`, `client`), Node.js 24
+- **Backend** (`server/`): Express 4, Mongoose 8, CommonJS, dotenv
+- **Frontend** (`artifacts/jewelry-store/`): React + Vite, Tailwind CSS, wouter routing, shadcn/ui, TanStack Query, Cormorant Garamond + Inter fonts
+- **DB**: MongoDB Atlas (Mongoose)
+- No TypeScript on server; TypeScript on client
 
 ## Where things live
 
-- `lib/api-spec/openapi.yaml` — OpenAPI contract (source of truth)
-- `lib/db/src/schema/` — DB table schemas: products, categories, settings
-- `artifacts/api-server/src/routes/` — Express routes (products, categories, settings, storage, health)
+- `server/server.js` — Express entry point, mounts /api routes
+- `server/config/db.js` — Mongoose connection (reads MONGODB_URI from env/dotenv)
+- `server/.env` — Local secrets (MONGODB_URI, not committed)
+- `server/models/` — Mongoose models: Product, Category, Setting
+- `server/controllers/` — productController, categoryController, settingController, storageController, authController
+- `server/routes/` — product, category, setting, storage, auth routes
+- `server/seed.js` — MongoDB seed script
 - `artifacts/jewelry-store/src/` — Frontend React app
-  - `pages/home.tsx` — Homepage with hero + featured products + "View All Products" button
+  - `lib/api-hooks.ts` — Local React Query hooks replacing @workspace/api-client-react
+  - `pages/home.tsx` — Homepage with hero + featured products
   - `pages/catalog.tsx` — Full product catalog with live category filters from API
   - `pages/product-detail.tsx` — Product detail + WhatsApp order button (₹ price, product code)
-  - `pages/admin-dashboard.tsx` — Admin product management (product code column, ₹)
+  - `pages/admin-dashboard.tsx` — Admin product management
   - `pages/admin-product-form.tsx` — Add/edit product (category dropdown, image upload)
   - `pages/admin-categories.tsx` — Category CRUD (auto code prefix)
   - `pages/admin-settings.tsx` — WhatsApp number setting + message preview
-  - `components/layout.tsx` — Store & Admin layouts (mobile hamburger menu for admin)
+  - `components/layout.tsx` — Store & Admin layouts
   - `components/product-card.tsx` — Reusable product card (₹ currency)
   - `components/image-upload.tsx` — Device image upload via presigned GCS URL
 
 ## Architecture decisions
 
-- API-first: OpenAPI spec gates all code generation; never write raw fetch calls
-- `lib/api-zod/src/index.ts` exports only from `./generated/api` (barrel removed to avoid name conflicts with Orval split mode)
-- `orval.config.ts` uses `mode: "single"` for Zod output; `mode: "split"` for React Query client
-- Product codes auto-generated on creation: 2-letter category prefix (from `categories.code_prefix`) + sequential number from 101 (e.g. BA101, CH101)
-- Image upload: client requests presigned URL from `/api/storage/uploads/request-url`, PUTs file directly to GCS, stores full serving URL `/api/storage/objects/...` in product images array
-- WhatsApp message format includes product name, code, ₹ price, and product URL; number fetched from settings table
-- Categories stored in `categories` table; catalog filter tabs loaded from API (not hardcoded)
+- All product/category IDs are MongoDB ObjectId strings (not numeric)
+- Product codes auto-generated on creation: 2-letter category prefix + sequential from 101 (e.g. BA101)
+- `artifacts/jewelry-store/src/lib/api-hooks.ts` is the single source of API types + React Query hooks
+- Image upload: client requests presigned URL from `/api/storage/uploads/request-url`, PUTs to GCS, stores URL in images array
+- WhatsApp message format includes product name, code, ₹ price, and product URL; number fetched from settings
+- MONGODB_URI loaded via `dotenv` using `__dirname`-relative path so it works regardless of CWD
+- pnpm-workspace.yaml includes `server` and `client` so pnpm manages their node_modules correctly
 
 ## Product
 
-- **Storefront**: Homepage with immersive hero, featured products grid, "View All Products" button; Catalog with live category filters; Product detail with image gallery, product code, ₹ price, WhatsApp enquiry button
-- **Admin**: Dashboard (stats + product table with code/₹/stock toggle); Add/edit product form (category dropdown, device image upload); Categories CRUD page; WhatsApp settings page
+- **Storefront**: Homepage with immersive hero, featured products grid; Catalog with live category filters; Product detail with image gallery, product code, ₹ price, WhatsApp enquiry button
+- **Admin**: Dashboard (stats + product table with code/₹/stock toggle); Add/edit product form; Categories CRUD; WhatsApp settings page; Login with password (`aurum2024`)
 
 ## User preferences
 
@@ -64,12 +73,8 @@ A luxury minimal mobile-first e-commerce catalog website for an Instagram jewelr
 
 ## Gotchas
 
-- Always re-run codegen after OpenAPI spec changes: `pnpm --filter @workspace/api-spec run codegen`
-- The codegen script patches `lib/api-zod/src/index.ts` after orval runs
-- DB `push` is interactive; for schema changes with data migration, use raw SQL via executeSql instead
-- Seed data uses Unsplash image URLs; uploaded images stored as `/api/storage/objects/...`
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
-- See the `object-storage` skill for storage/presigned URL patterns
+- `server/.env` must contain `MONGODB_URI` for local dev; the path is loaded with `require('path').join(__dirname, '.env')`
+- After API changes, update `artifacts/jewelry-store/src/lib/api-hooks.ts` (no codegen needed — it's handwritten)
+- DB IDs are strings (MongoDB ObjectId); never cast to Number
+- `client/` directory mirrors the jewelry-store frontend but is the standalone npm workspace version
+- `artifacts/jewelry-store` is what Replit workflows serve (the pnpm workspace version)

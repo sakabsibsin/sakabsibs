@@ -12,7 +12,7 @@ import {
   getListProductsQueryKey,
   getGetProductQueryKey,
   getGetProductStatsQueryKey,
-} from "@workspace/api-client-react";
+} from "@/lib/api-hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -59,12 +59,12 @@ export default function AdminProductForm() {
   const queryClient = useQueryClient();
 
   const isEditing = params.id && params.id !== "new";
-  const productId = isEditing ? Number(params.id) : undefined;
+  const productId = isEditing ? (params.id as string) : undefined;
 
-  const { data: product, isLoading: isLoadingProduct } = useGetProduct(productId ?? 0, {
+  const { data: product, isLoading: isLoadingProduct } = useGetProduct(productId ?? "", {
     query: {
-      enabled: !!isEditing && productId !== undefined,
-      queryKey: getGetProductQueryKey(productId ?? 0),
+      enabled: !!isEditing && !!productId,
+      queryKey: getGetProductQueryKey(productId ?? ""),
     },
   });
 
