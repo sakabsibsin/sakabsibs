@@ -199,7 +199,7 @@ export default function AdminProducts() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[56px]">Image</TableHead>
+                  <TableHead className="w-[56px] pl-[5px] pr-[5px]">Image</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Code</TableHead>
                   <TableHead className="hidden md:table-cell">Category</TableHead>
