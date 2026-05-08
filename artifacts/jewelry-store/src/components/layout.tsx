@@ -2,81 +2,48 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, LogOut } from "lucide-react";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
-import { useListSettings } from "@/lib/api-hooks";
 
 export function Navbar() {
   const { isAuthed } = useAdminAuth();
-  const { data: settings } = useListSettings();
-  const storeName = settings?.["store_name"] || "AURUM";
-  const storeLogo = settings?.["store_logo"] || "";
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
-      <div className="container mx-auto px-4 md:px-8 h-16 flex items-center">
-        {/* Left — Shop */}
-        <div className="flex-1 flex items-center">
+      <div className="container mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+        <div className="flex-1 flex items-center gap-6">
           <Link href="/products" className="text-sm uppercase tracking-widest hover:text-muted-foreground transition-colors">
             Shop
           </Link>
-        </div>
-
-        {/* Center — Brand */}
-        <Link href="/" className="flex-1 flex items-center justify-center cursor-pointer">
-          {storeLogo ? (
-            <img src={storeLogo} alt={storeName} className="h-8 max-w-[120px] object-contain" />
-          ) : (
-            <span className="font-serif text-3xl tracking-widest">{storeName}</span>
-          )}
-        </Link>
-
-        {/* Right — Admin (only if logged in) */}
-        <div className="flex-1 flex items-center justify-end">
           {isAuthed && (
             <Link href="/admin" className="text-sm uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
               Admin
             </Link>
           )}
         </div>
+
+        <Link href="/" className="font-serif text-3xl tracking-widest cursor-pointer text-center flex-1">
+          AURUM
+        </Link>
+
+        <div className="flex-1" />
       </div>
     </header>
   );
 }
 
 export function Footer() {
-  const { data: settings } = useListSettings();
-  const storeName = settings?.["store_name"] || "AURUM";
-  const instagramLink = settings?.["instagram_link"] || "#";
-
   return (
-    <footer className="bg-background border-t border-border mt-8 py-8">
-      <div className="container mx-auto px-4 md:px-8 flex flex-col items-center gap-4 text-center">
-        <span className="font-serif text-xl tracking-widest">{storeName}</span>
-        <div className="flex items-center gap-6 text-xs uppercase tracking-widest">
-          <a
-            href={instagramLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Instagram
-          </a>
-          <a
-            href={`https://wa.me/${(settings?.["whatsapp_number"] || "").replace(/\D/g, "")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Contact
-          </a>
+    <footer className="bg-background border-t border-border mt-8 py-6">
+      <div className="container mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="font-serif text-xl tracking-widest">AURUM</div>
+        <div className="text-xs text-muted-foreground font-light tracking-wide">
+          Whisper-quiet luxury.
         </div>
-        <a
-          href="https://shopflow.in"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[11px] text-muted-foreground/60 tracking-wide hover:text-muted-foreground transition-colors border-t border-border/50 pt-4 mt-1 w-full"
-        >
-          Powered by <span className="font-medium text-muted-foreground">ShopFlo</span>
-        </a>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex gap-4 text-xs uppercase tracking-widest">
+            <a href="#" className="hover:text-muted-foreground transition-colors">Instagram</a>
+            <a href="#" className="hover:text-muted-foreground transition-colors">Contact</a>
+          </div>
+          <span className="text-[10px] text-muted-foreground/50 tracking-wide">Powered by ShopFlo</span>
+        </div>
       </div>
     </footer>
   );
@@ -104,8 +71,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { logout } = useAdminAuth();
-  const { data: settings } = useListSettings();
-  const storeName = settings?.["store_name"] || "AURUM";
 
   const handleLogout = () => {
     logout();
@@ -117,7 +82,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <header className="bg-background border-b border-border sticky top-0 z-40">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/" className="font-serif text-xl tracking-widest shrink-0">{storeName}</Link>
+            <Link href="/" className="font-serif text-xl tracking-widest shrink-0">AURUM</Link>
             <nav className="hidden md:flex items-center gap-4">
               {adminLinks.map((link) => (
                 <Link
@@ -153,10 +118,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Mobile menu — fixed overlay, never shifts page content */}
+      {/* Mobile menu — fixed overlay so it never shifts page content */}
       {menuOpen && (
         <>
-          <div className="md:hidden fixed inset-0 z-40 bg-black/20" onClick={() => setMenuOpen(false)} />
+          <div
+            className="md:hidden fixed inset-0 z-40 bg-black/20"
+            onClick={() => setMenuOpen(false)}
+          />
           <div className="md:hidden fixed top-14 left-0 right-0 z-50 bg-background border-b border-border shadow-lg">
             <nav className="container mx-auto px-4 py-3 flex flex-col gap-1">
               {adminLinks.map((link) => (

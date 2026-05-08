@@ -1,45 +1,30 @@
 import { Link } from "wouter";
 import { StoreLayout } from "@/components/layout";
 import { ProductCard } from "@/components/product-card";
-import { useGetFeaturedProducts, useListSettings } from "@/lib/api-hooks";
+import { useGetFeaturedProducts } from "@/lib/api-hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const GRID = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5";
 
-const FALLBACK_HERO = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=2940&auto=format&fit=crop";
-
 export default function Home() {
   const { data: featuredProducts, isLoading } = useGetFeaturedProducts();
-  const { data: settings } = useListSettings();
-
-  const storeName = settings?.["store_name"] || "AURUM";
-  const heroImage = settings?.["hero_image"] || FALLBACK_HERO;
-  const heroTitle = settings?.["hero_title"] || storeName;
-  const heroSubtitle = settings?.["hero_subtitle"] || "Whisper-quiet luxury";
 
   return (
     <StoreLayout>
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="relative h-[calc(100dvh-4rem)] overflow-hidden bg-muted">
         <img
-          src={heroImage}
+          src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=2940&auto=format&fit=crop"
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover object-center opacity-90"
         />
         <div className="relative z-10 flex items-center justify-center h-full px-4">
           <div className="text-center p-8 sm:p-12 bg-background/50 backdrop-blur-sm border border-border/50">
-            <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-[0.1em] text-foreground font-serif">
-              {heroTitle}
-            </h1>
-            <p className="mt-6 text-sm md:text-base tracking-[0.2em] uppercase text-foreground/80">
-              {heroSubtitle}
-            </p>
+            <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-[0.1em] text-foreground font-serif">AURUM</h1>
+            <p className="mt-6 text-sm md:text-base tracking-[0.2em] uppercase text-foreground/80">Whisper-quiet luxury</p>
             <div className="mt-10 md:mt-12">
-              <Link
-                href="/products"
-                className="inline-block border border-foreground px-8 py-3 text-sm uppercase tracking-widest hover:bg-foreground hover:text-background transition-colors duration-500"
-              >
+              <Link href="/products" className="inline-block border border-foreground px-8 py-3 text-sm uppercase tracking-widest hover:bg-foreground hover:text-background transition-colors duration-500">
                 Discover the Collection
               </Link>
             </div>

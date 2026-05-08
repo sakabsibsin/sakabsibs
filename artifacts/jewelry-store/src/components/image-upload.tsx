@@ -66,9 +66,8 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
               alt={`Image ${i + 1}`}
               className={`w-full h-full object-cover transition-opacity duration-300 ${img.isPending ? "opacity-40" : "opacity-100"}`}
             />
-            {/* Single loader — only on the pending image tile */}
             {img.isPending && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/20">
+              <div className="absolute inset-0 flex items-center justify-center bg-background/30">
                 <div className="w-5 h-5 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
               </div>
             )}
@@ -85,7 +84,6 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
           </div>
         ))}
 
-        {/* Add button — disabled during upload, no secondary spinner */}
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -93,10 +91,14 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
           className="aspect-square border border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-foreground transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
           data-testid="button-add-image"
         >
-          <Plus className="h-5 w-5" />
-          <span className="text-xs uppercase tracking-widest">
-            {uploading ? "Uploading…" : "Add Image"}
-          </span>
+          {uploading ? (
+            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              <Plus className="h-5 w-5" />
+              <span className="text-xs uppercase tracking-widest">Add Image</span>
+            </>
+          )}
         </button>
       </div>
 
