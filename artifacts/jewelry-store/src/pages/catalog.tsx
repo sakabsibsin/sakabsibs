@@ -40,7 +40,10 @@ export default function Catalog() {
     if (offset === 0) {
       setAllProducts(pageData);
     } else {
-      setAllProducts((prev) => [...prev, ...pageData]);
+      setAllProducts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...pageData.filter((p) => !seen.has(p.id))];
+      });
     }
     setHasMore(pageData.length === PAGE_SIZE);
   }, [pageData, offset]);
