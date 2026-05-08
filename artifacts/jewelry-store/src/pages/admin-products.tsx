@@ -52,6 +52,7 @@ export default function AdminProducts() {
 
   const tabsRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -74,7 +75,6 @@ export default function AdminProducts() {
     query: { queryKey: getListProductsQueryKey(queryParams) },
   });
 
-  // Merge pages; reset when search / category changes
   useEffect(() => {
     if (pageData === undefined) return;
     const incoming = pageData.products;
@@ -89,30 +89,30 @@ export default function AdminProducts() {
     setHasMore(pageData.hasMore);
   }, [pageData, offset]);
 
-  // Reset when filters change
   useEffect(() => {
     setOffset(0);
     setAllProducts([]);
     setHasMore(true);
+    // Scroll back to top when filters change
+    scrollRef.current?.scrollTo({ top: 0 });
   }, [search, activeCategory]);
 
-  // Infinite scroll sentinel
   const loadMore = useCallback(() => {
     if (!isFetching && hasMore) setOffset((prev) => prev + PAGE_SIZE);
   }, [isFetching, hasMore]);
 
   useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
+    const sentinel = sentinelRef.current;
+    const container = scrollRef.current;
+    if (!sentinel || !container) return;
     const observer = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting) loadMore(); },
-      { rootMargin: "200px" }
+      { root: container, rootMargin: "200px" }
     );
-    observer.observe(el);
+    observer.observe(sentinel);
     return () => observer.disconnect();
   }, [loadMore]);
 
-  // Category tab scroll state
   const updateScrollState = useCallback(() => {
     const el = tabsRef.current;
     if (!el) return;
@@ -147,7 +147,6 @@ export default function AdminProducts() {
       { id, data: { inStock } },
       {
         onSuccess: () => {
-          // Update in-place without refetch
           setAllProducts((prev) =>
             prev.map((p) => (p.id === id ? { ...p, inStock } : p))
           );
@@ -183,16 +182,17 @@ export default function AdminProducts() {
 
   return (
     <AdminLayout fullHeight>
-      {/* ── Compact toolbar (never scrolls) ── */}
-      <div className="shrink-0 bg-background border-b border-border px-4 pt-3 pb-0">
 
-        {/* Row: title + count + add button */}
+      {/* ── Layer 1: Toolbar — always visible, never scrolls, sits above everything ── */}
+      <div className="shrink-0 bg-background border-b border-border z-20 px-4 pt-3 pb-0">
+
+        {/* Title row */}
         <div className="flex items-center justify-between gap-3 mb-2.5">
-          <div className="flex items-baseline gap-2.5 min-w-0">
-            <h1 className="text-lg font-serif tracking-wide leading-none shrink-0">Products</h1>
+          <div className="flex items-baseline gap-2 min-w-0">
+            <h1 className="text-base font-serif tracking-wide leading-none shrink-0">Products</h1>
             {!isLoading && total !== undefined && (
-              <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                {allProducts.length}/{total}
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                {allProducts.length} / {total}
               </span>
             )}
           </div>
@@ -204,25 +204,25 @@ export default function AdminProducts() {
           </Button>
         </div>
 
-        {/* Search */}
+        {/* Search — slightly taller, better tap target */}
         <div className="relative mb-2.5">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search name, code or material…"
-            className="pl-8 rounded-none border-border bg-background h-8 text-sm"
+            className="pl-9 pr-3 rounded-none border-border bg-background h-9 text-sm"
           />
         </div>
 
         {/* Category tabs */}
-        <div className="relative overflow-x-hidden">
+        <div className="relative overflow-x-hidden -mx-4">
           {canScrollLeft && (
-            <div className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none w-10 bg-gradient-to-r from-background to-transparent" />
+            <div className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none w-8 bg-gradient-to-r from-background to-transparent" />
           )}
           <div
             ref={tabsRef}
-            className="flex items-end gap-0 overflow-x-auto scrollbar-hide -mx-4 px-4"
+            className="flex items-end gap-0 overflow-x-auto scrollbar-hide px-4"
             style={{ overflowY: "hidden", touchAction: "pan-x" }}
           >
             {allCategories.map((cat) => (
@@ -244,41 +244,69 @@ export default function AdminProducts() {
             <span className="shrink-0 w-4" aria-hidden="true" />
           </div>
           {canScrollRight && (
-            <div className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none w-10 bg-gradient-to-l from-background to-transparent" />
+            <div className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none w-8 bg-gradient-to-l from-background to-transparent" />
           )}
         </div>
       </div>
 
-      {/* ── Scrollable product table ── */}
-      <div className="flex-1 overflow-y-auto overflow-x-auto bg-muted/20">
-        <Table className="min-w-[560px]">
+      {/* ── Layer 2: Scroll area — only this scrolls vertically ── */}
+      {/*
+        KEY ARCHITECTURE NOTE:
+        - overflow-y-auto creates the vertical scroll container
+        - overflow-x-auto handles wide tables
+        - sticky top-0 on thead sticks to y=0 of THIS container (right below toolbar)
+        - min-h-0 is required so flex children can shrink below their content size
+      */}
+      <div
+        ref={scrollRef}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-auto"
+      >
+        <Table className="min-w-[560px] w-full">
+
+          {/* ── Layer 3: Table header — sticky within the scroll container ── */}
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="sticky top-0 bg-background z-10 w-[52px] pl-4 pr-1 border-b border-border">Img</TableHead>
-              <TableHead className="sticky top-0 bg-background z-10 border-b border-border">Name</TableHead>
-              <TableHead className="sticky top-0 bg-background z-10 hidden sm:table-cell border-b border-border">Code</TableHead>
-              <TableHead className="sticky top-0 bg-background z-10 hidden md:table-cell border-b border-border">Category</TableHead>
-              <TableHead className="sticky top-0 bg-background z-10 border-b border-border">Price</TableHead>
-              <TableHead className="sticky top-0 bg-background z-10 border-b border-border">Stock</TableHead>
-              <TableHead className="sticky top-0 bg-background z-10 text-right pr-4 border-b border-border">Actions</TableHead>
+              <TableHead className="sticky top-0 bg-background border-b border-border z-10 w-[52px] pl-4 pr-1 py-2.5 text-[10px] uppercase tracking-widest font-medium">
+                Img
+              </TableHead>
+              <TableHead className="sticky top-0 bg-background border-b border-border z-10 py-2.5 text-[10px] uppercase tracking-widest font-medium">
+                Name
+              </TableHead>
+              <TableHead className="sticky top-0 bg-background border-b border-border z-10 hidden sm:table-cell py-2.5 text-[10px] uppercase tracking-widest font-medium">
+                Code
+              </TableHead>
+              <TableHead className="sticky top-0 bg-background border-b border-border z-10 hidden md:table-cell py-2.5 text-[10px] uppercase tracking-widest font-medium">
+                Category
+              </TableHead>
+              <TableHead className="sticky top-0 bg-background border-b border-border z-10 py-2.5 text-[10px] uppercase tracking-widest font-medium">
+                Price
+              </TableHead>
+              <TableHead className="sticky top-0 bg-background border-b border-border z-10 py-2.5 text-[10px] uppercase tracking-widest font-medium">
+                Stock
+              </TableHead>
+              <TableHead className="sticky top-0 bg-background border-b border-border z-10 text-right pr-4 py-2.5 text-[10px] uppercase tracking-widest font-medium">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
+
+          {/* ── Layer 4: Scrollable rows only ── */}
           <TableBody>
             {isLoading && offset === 0 ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell className="pl-4 pr-1"><Skeleton className="h-10 w-10" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-10" /></TableCell>
-                  <TableCell className="pr-4"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+              Array.from({ length: 10 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  <TableCell className="pl-4 pr-1 py-2"><Skeleton className="h-10 w-10" /></TableCell>
+                  <TableCell className="py-2"><Skeleton className="h-4 w-36" /></TableCell>
+                  <TableCell className="hidden sm:table-cell py-2"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell py-2"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="py-2"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="py-2"><Skeleton className="h-6 w-10" /></TableCell>
+                  <TableCell className="pr-4 py-2"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))
-            ) : allProducts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-40 text-center text-muted-foreground font-serif italic text-sm">
+            ) : allProducts.length === 0 && !isFetching ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="h-48 text-center text-muted-foreground font-serif italic text-sm">
                   {search || activeCategory !== "All"
                     ? "No products match your search."
                     : "No products yet. Add your first piece."}
@@ -289,8 +317,10 @@ export default function AdminProducts() {
                 <TableRow key={product.id} className="group">
                   <TableCell className="pl-4 pr-1 py-2">
                     <div className="h-10 w-10 bg-muted border border-border overflow-hidden shrink-0">
-                      {product.images?.[0] && (
+                      {product.images?.[0] ? (
                         <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full bg-muted" />
                       )}
                     </div>
                   </TableCell>
@@ -361,38 +391,34 @@ export default function AdminProducts() {
                 </TableRow>
               ))
             )}
+
+            {/* Inline load-more skeletons — inside tbody, no layout shift */}
+            {isFetching && offset > 0 &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={`skel-${i}`} className="hover:bg-transparent">
+                  <TableCell className="pl-4 pr-1 py-2"><Skeleton className="h-10 w-10" /></TableCell>
+                  <TableCell className="py-2"><Skeleton className="h-4 w-36" /></TableCell>
+                  <TableCell className="hidden sm:table-cell py-2"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell py-2"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="py-2"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="py-2"><Skeleton className="h-6 w-10" /></TableCell>
+                  <TableCell className="pr-4 py-2"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                </TableRow>
+              ))
+            }
           </TableBody>
         </Table>
 
-        {/* Infinite scroll sentinel + load-more skeletons */}
-        {hasMore && (
-          <div ref={sentinelRef} className="px-4 pb-4">
-            {isFetching && (
-              <Table className="min-w-[560px]">
-                <TableBody>
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="pl-4 pr-1 w-[52px]"><Skeleton className="h-10 w-10" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-10" /></TableCell>
-                      <TableCell className="pr-4"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-        )}
+        {/* Sentinel for IntersectionObserver — outside the table, inside scroll container */}
+        <div ref={sentinelRef} className="h-px" />
 
         {!hasMore && allProducts.length > PAGE_SIZE && (
-          <p className="text-center py-4 text-xs text-muted-foreground uppercase tracking-widest border-t border-border">
+          <p className="text-center py-5 text-[11px] text-muted-foreground uppercase tracking-widest border-t border-border">
             All {total} products shown
           </p>
         )}
       </div>
+
     </AdminLayout>
   );
 }
