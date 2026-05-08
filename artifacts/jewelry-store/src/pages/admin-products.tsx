@@ -29,7 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
 
 export default function AdminProducts() {
   const [search, setSearch] = useState("");
@@ -126,201 +126,193 @@ export default function AdminProducts() {
   };
 
   return (
-    <AdminLayout>
-      <div>
+    <AdminLayout fullHeight>
+      {/* ── Compact toolbar (never scrolls) ── */}
+      <div className="shrink-0 bg-background border-b border-border px-4 pt-3 pb-0">
 
-        {/* Sticky header: title + search + category tabs */}
-        <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-sm -mx-4 px-4 pt-4 pb-0 border-b border-border mb-4">
-
-          {/* Header row */}
-          <div className="flex items-center justify-between gap-4 mb-3">
-            <div>
-              <h1 className="text-xl font-serif tracking-wide leading-tight">Products</h1>
-              <p className="text-muted-foreground text-xs mt-0.5">
-                {isLoading ? "Loading…" : `${filtered.length} of ${products?.length ?? 0} products`}
-              </p>
-            </div>
-            <Button
-              asChild
-              className="bg-foreground text-background hover:bg-foreground/90 rounded-none uppercase tracking-widest text-xs h-9 px-5 shrink-0"
-            >
-              <a href="/admin/products/new">+ Add</a>
-            </Button>
-          </div>
-
-          {/* Search */}
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, category or product code…"
-              className="pl-9 rounded-none border-border bg-card h-9 text-sm"
-            />
-          </div>
-
-          {/* Category filter tabs */}
-          <div className="relative overflow-x-hidden">
-            {canScrollLeft && (
-              <div className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none">
-                <div className="h-full w-12 bg-gradient-to-r from-background to-transparent" />
-              </div>
-            )}
-            <div
-              ref={tabsRef}
-              className="flex items-end gap-0 overflow-x-auto scrollbar-hide"
-              style={{ overflowY: "hidden", touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
-            >
-              {allCategories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`
-                    relative shrink-0 pb-2.5 px-4 text-xs uppercase tracking-widest
-                    transition-colors duration-200 whitespace-nowrap
-                    ${activeCategory === cat ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
-                  `}
-                >
-                  {cat}
-                  {activeCategory === cat && (
-                    <span className="absolute bottom-[-1px] left-3 right-3 h-[1.5px] bg-foreground" />
-                  )}
-                </button>
-              ))}
-              <span className="shrink-0 w-4" aria-hidden="true" />
-            </div>
-            {canScrollRight && (
-              <div className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none">
-                <div className="h-full w-12 bg-gradient-to-l from-background to-transparent" />
-              </div>
+        {/* Row: title + count + add button */}
+        <div className="flex items-center justify-between gap-3 mb-2.5">
+          <div className="flex items-baseline gap-2.5 min-w-0">
+            <h1 className="text-lg font-serif tracking-wide leading-none shrink-0">Products</h1>
+            {!isLoading && (
+              <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                {filtered.length}/{products?.length ?? 0}
+              </span>
             )}
           </div>
+          <Button
+            asChild
+            className="bg-foreground text-background hover:bg-foreground/90 rounded-none uppercase tracking-widest text-[11px] h-8 px-4 shrink-0"
+          >
+            <a href="/admin/products/new">+ Add</a>
+          </Button>
         </div>
 
-        {/* Table */}
-        <div className="bg-card border border-border">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[56px] pl-[5px] pr-[5px]">Image</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">Code</TableHead>
-                  <TableHead className="hidden md:table-cell">Category</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+        {/* Search */}
+        <div className="relative mb-2.5">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, category or code…"
+            className="pl-8 rounded-none border-border bg-background h-8 text-sm"
+          />
+        </div>
+
+        {/* Category tabs */}
+        <div className="relative overflow-x-hidden">
+          {canScrollLeft && (
+            <div className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none w-10 bg-gradient-to-r from-background to-transparent" />
+          )}
+          <div
+            ref={tabsRef}
+            className="flex items-end gap-0 overflow-x-auto scrollbar-hide -mx-4 px-4"
+            style={{ overflowY: "hidden", touchAction: "pan-x" }}
+          >
+            {allCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`
+                  relative shrink-0 pb-2 px-3 text-[11px] uppercase tracking-widest
+                  transition-colors duration-150 whitespace-nowrap
+                  ${activeCategory === cat ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
+                `}
+              >
+                {cat}
+                {activeCategory === cat && (
+                  <span className="absolute bottom-0 left-2 right-2 h-[1.5px] bg-foreground" />
+                )}
+              </button>
+            ))}
+            <span className="shrink-0 w-4" aria-hidden="true" />
+          </div>
+          {canScrollRight && (
+            <div className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none w-10 bg-gradient-to-l from-background to-transparent" />
+          )}
+        </div>
+      </div>
+
+      {/* ── Scrollable product list (only this scrolls) ── */}
+      <div className="flex-1 overflow-y-auto overflow-x-auto bg-muted/20">
+        <Table className="min-w-[560px]">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="sticky top-0 bg-background z-10 w-[52px] pl-4 pr-1 border-b border-border">Img</TableHead>
+              <TableHead className="sticky top-0 bg-background z-10 border-b border-border">Name</TableHead>
+              <TableHead className="sticky top-0 bg-background z-10 hidden sm:table-cell border-b border-border">Code</TableHead>
+              <TableHead className="sticky top-0 bg-background z-10 hidden md:table-cell border-b border-border">Category</TableHead>
+              <TableHead className="sticky top-0 bg-background z-10 border-b border-border">Price</TableHead>
+              <TableHead className="sticky top-0 bg-background z-10 border-b border-border">Stock</TableHead>
+              <TableHead className="sticky top-0 bg-background z-10 text-right pr-4 border-b border-border">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell className="pl-4 pr-1"><Skeleton className="h-10 w-10" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-10" /></TableCell>
+                  <TableCell className="pr-4"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-11 w-11" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-10" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground font-serif italic">
-                      {search || activeCategory !== "All"
-                        ? "No products match your search."
-                        : "No products yet. Add your first piece."}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div className="h-11 w-11 bg-muted border border-border overflow-hidden shrink-0">
-                          {product.images?.[0] && (
-                            <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium max-w-[160px]">
-                        <span className="line-clamp-2 text-sm">{product.name}</span>
-                        {product.featured && (
-                          <span className="mt-1 block text-[10px] uppercase tracking-widest bg-muted px-1.5 py-0.5 border border-border w-fit">
-                            Featured
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground text-xs font-mono">
-                        {product.productCode}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell capitalize text-muted-foreground text-sm">
-                        {product.category}
-                      </TableCell>
-                      <TableCell className="text-sm whitespace-nowrap">
-                        ₹{product.price.toLocaleString("en-IN")}
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={product.inStock}
-                          onCheckedChange={(checked) => handleToggleStock(product.id, checked)}
-                          disabled={toggleStock.isPending}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+              ))
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-40 text-center text-muted-foreground font-serif italic text-sm">
+                  {search || activeCategory !== "All"
+                    ? "No products match your search."
+                    : "No products yet. Add your first piece."}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.slice(0, PAGE_SIZE).map((product) => (
+                <TableRow key={product.id} className="group">
+                  <TableCell className="pl-4 pr-1 py-2">
+                    <div className="h-10 w-10 bg-muted border border-border overflow-hidden shrink-0">
+                      {product.images?.[0] && (
+                        <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2 font-medium max-w-[150px]">
+                    <span className="line-clamp-2 text-sm leading-tight">{product.name}</span>
+                    {product.featured && (
+                      <span className="mt-0.5 block text-[9px] uppercase tracking-widest bg-muted px-1.5 py-0.5 border border-border w-fit">
+                        Featured
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell py-2 text-muted-foreground text-xs font-mono">
+                    {product.productCode}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell py-2 capitalize text-muted-foreground text-sm">
+                    {product.category}
+                  </TableCell>
+                  <TableCell className="py-2 text-sm whitespace-nowrap">
+                    ₹{product.price.toLocaleString("en-IN")}
+                  </TableCell>
+                  <TableCell className="py-2">
+                    <Switch
+                      checked={product.inStock}
+                      onCheckedChange={(checked) => handleToggleStock(product.id, checked)}
+                      disabled={toggleStock.isPending}
+                    />
+                  </TableCell>
+                  <TableCell className="py-2 pr-4 text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-none border-border h-8 w-8"
+                        onClick={() => setLocation(`/admin/products/${product.id}/edit`)}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="rounded-none border-border h-8 w-8"
-                            onClick={() => setLocation(`/admin/products/${product.id}/edit`)}
+                            className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground h-8 w-8"
                           >
-                            <Edit className="h-3.5 w-3.5" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground h-8 w-8"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="rounded-none border-border">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="font-serif">Delete Product</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{product.name}"? This cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="rounded-none uppercase tracking-widest text-xs">Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(product.id)}
-                                  className="rounded-none uppercase tracking-widest text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="rounded-none border-border">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="font-serif">Delete Product</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{product.name}"? This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="rounded-none uppercase tracking-widest text-xs">Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(product.id)}
+                              className="rounded-none uppercase tracking-widest text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
 
         {!isLoading && filtered.length > PAGE_SIZE && (
-          <p className="text-center text-xs text-muted-foreground uppercase tracking-widest">
-            Showing first {PAGE_SIZE} results — refine your search to narrow down.
+          <p className="text-center py-4 text-xs text-muted-foreground uppercase tracking-widest border-t border-border">
+            Showing first {PAGE_SIZE} — refine search to narrow down
           </p>
         )}
-
       </div>
     </AdminLayout>
   );

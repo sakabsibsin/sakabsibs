@@ -1,0 +1,86 @@
+Carefully redesign and optimize ONLY the admin product listing page for a much cleaner, more compact, and productivity-focused experience without affecting the rest of the project.
+
+Analyze the current scrolling behavior, layout spacing, sticky behavior, and mobile responsiveness before making changes.
+
+Current problems:
+
+* Too much vertical space is wasted at the top
+* The whole page scrolls instead of only the product list
+* Sticky behavior feels jerky and unstable
+* Product header/search area shifts while scrolling
+* Table headers disappear during scrolling
+* The page feels cluttered and inefficient for admins
+
+Goal:
+Make the admin product page feel like a clean professional workspace where admins can manage products quickly and easily.
+
+Required Layout Structure:
+
+1. Fixed/Sticky Navbar
+
+* Navbar should remain stable
+* No jerking or layout shifting
+
+2. Compact Sticky Product Toolbar
+   This section should remain fixed below navbar:
+
+* Products title
+* Product count
+* Add button
+* Search bar
+* Category tabs
+
+Requirements:
+
+* Reduce unnecessary vertical spacing
+* Make the toolbar compact and efficient
+* Prevent the toolbar from moving/jumping while scrolling
+* Keep proper background and z-index
+
+3. Scrollable Product List Area ONLY
+   Important:
+
+* The entire page should NOT scroll
+* Only the product table/list section should scroll internally
+* Product rows should scroll behind the table header
+* Table headers should always remain visible
+
+Requirements:
+
+* Keep headers sticky inside the table
+* Ensure smooth scrolling
+* Remove jerky behavior completely
+* Prevent layout shifting
+* Improve touch/mobile scrolling behavior
+
+4. Mobile Optimization
+   The admin page should feel optimized for mobile instead of just a shrunk desktop page.
+
+Requirements:
+
+* Reduce unnecessary padding/margins
+* Improve spacing efficiency
+* Keep controls easily accessible
+* Maintain clean readability
+* Ensure scrolling experience feels smooth and lightweight
+
+5. General UX Improvements
+   Focus on:
+
+* compact layout
+* better workspace efficiency
+* smooth scrolling
+* consistent spacing
+* easier product management
+* minimal distractions
+
+Important:
+
+* Do not redesign the entire admin panel
+* Do not add unnecessary dashboard widgets/cards
+* Keep the UI simple and beginner-friendly
+* Keep implementation lightweight and maintainable
+* Ensure no existing functionality breaks
+* Reuse existing components wherever possible
+
+The goal is to make the product management page feel extremely simple, fast, and frictionless for non-technical sellers.

@@ -73,7 +73,7 @@ const adminLinks = [
   { href: "/admin/settings", label: "Settings" },
 ];
 
-export function AdminLayout({ children }: { children: React.ReactNode }) {
+export function AdminLayout({ children, fullHeight = false }: { children: React.ReactNode; fullHeight?: boolean }) {
   const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { logout } = useAdminAuth();
@@ -84,7 +84,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-muted/20">
+    <div className={`flex flex-col bg-muted/20 ${fullHeight ? "h-[100dvh] overflow-hidden" : "min-h-[100dvh]"}`}>
       <header className="bg-background border-b border-border sticky top-0 z-40">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -161,7 +161,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </>
       )}
 
-      <main className="flex-1 container mx-auto px-4 py-6">
+      <main className={`flex-1 overflow-hidden ${fullHeight ? "flex flex-col" : "container mx-auto px-4 py-6 overflow-y-auto"}`}>
         {children}
       </main>
     </div>
