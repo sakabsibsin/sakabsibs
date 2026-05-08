@@ -7,23 +7,27 @@ export function Navbar() {
   const { isAuthed } = useAdminAuth();
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
-      <div className="container mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-        <div className="flex-1 flex items-center gap-6">
+      <div className="container mx-auto px-4 md:px-8 h-16 flex items-center">
+        {/* Left */}
+        <div className="flex-1 flex items-center">
           <Link href="/products" className="text-sm uppercase tracking-widest hover:text-muted-foreground transition-colors">
             Shop
           </Link>
+        </div>
+
+        {/* Center */}
+        <Link href="/" className="font-serif text-3xl tracking-widest cursor-pointer text-center flex-1 flex justify-center">
+          AURUM
+        </Link>
+
+        {/* Right */}
+        <div className="flex-1 flex items-center justify-end">
           {isAuthed && (
             <Link href="/admin" className="text-sm uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
               Admin
             </Link>
           )}
         </div>
-
-        <Link href="/" className="font-serif text-3xl tracking-widest cursor-pointer text-center flex-1">
-          AURUM
-        </Link>
-
-        <div className="flex-1" />
       </div>
     </header>
   );
@@ -31,19 +35,21 @@ export function Navbar() {
 
 export function Footer() {
   return (
-    <footer className="bg-background border-t border-border mt-8 py-6">
-      <div className="container mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+    <footer className="bg-background border-t border-border mt-8 py-8">
+      <div className="container mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="font-serif text-xl tracking-widest">AURUM</div>
-        <div className="text-xs text-muted-foreground font-light tracking-wide">
-          Whisper-quiet luxury.
+        <div className="flex gap-5 text-xs uppercase tracking-widest">
+          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Instagram</a>
+          <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex gap-4 text-xs uppercase tracking-widest">
-            <a href="#" className="hover:text-muted-foreground transition-colors">Instagram</a>
-            <a href="#" className="hover:text-muted-foreground transition-colors">Contact</a>
-          </div>
-          <span className="text-[10px] text-muted-foreground/50 tracking-wide">Powered by ShopFlo</span>
-        </div>
+        <a
+          href="https://shopflow.in"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] uppercase tracking-widest text-muted-foreground border border-border px-3 py-1 hover:border-foreground hover:text-foreground transition-colors"
+        >
+          Powered by ShopFlow
+        </a>
       </div>
     </footer>
   );
@@ -155,7 +161,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </>
       )}
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-6">
         {children}
       </main>
     </div>

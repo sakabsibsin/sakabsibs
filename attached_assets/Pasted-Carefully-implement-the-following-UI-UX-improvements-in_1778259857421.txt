@@ -1,0 +1,87 @@
+Carefully implement the following UI/UX improvements in the existing ShopFlo project without changing the architecture, breaking existing functionality, or affecting previous stable updates.
+
+Before making changes:
+
+* Analyze the current admin product page structure
+* Analyze the current navbar and footer structure
+* Ensure only the requested sections are updated
+* Do not modify unrelated components or flows
+
+The goal is to improve:
+
+* admin productivity
+* scrolling experience
+* layout efficiency
+* storefront branding
+* premium feel
+
+while keeping the project simple, lightweight, and stable.
+
+1. Improve Admin Product Listing Page UX
+   Current issue:
+   Too much vertical space is used by the top product info/search section, reducing visible workspace for product management.
+
+Requirements:
+
+* Reduce unnecessary spacing and height usage at the top
+* Make the page more compact and efficient
+* Keep the admin workflow fast and clean
+
+Sticky Header/Search Behavior:
+
+* Keep the search/filter/header section sticky at the top while scrolling
+* Product list/table/cards should scroll behind the sticky section
+* Ensure proper background and z-index for sticky section
+* Prevent layout shifting/jumping while scrolling
+* Keep scrolling smooth and stable
+
+Admin UX Improvements:
+
+* Improve spacing consistency
+* Ensure important actions remain easily accessible
+* Make the page feel more professional and productivity-focused
+* Keep responsive behavior working correctly
+
+2. Update Frontend Navbar Layout
+   Current navbar structure feels visually unbalanced.
+
+Requirements:
+
+* Update navbar alignment to:
+  Shop (left) → Aura/logo (center) → Admin (right)
+* Move Admin button to the far right
+* Keep branding/logo centered properly
+* Maintain responsive alignment on mobile and desktop
+* Improve spacing and premium feel
+
+3. Improve Footer Design & Branding
+   Current footer feels cluttered and visually inconsistent.
+
+Requirements:
+
+* Remove the “whisper quietly luxury” text/content
+* Simplify the footer layout
+* Improve spacing and alignment
+* Make footer cleaner and more premium
+
+Footer should mainly contain:
+
+* Brand/store name
+* Instagram/contact
+* Powered by ShopFlow
+
+ShopFlow Branding:
+
+* Give “Powered by ShopFlow” more visual importance
+* Make it slightly highlighted for branding visibility
+* Clicking it should navigate to:
+  https://shopflow.in
+
+Important:
+
+* Do not redesign the whole website
+* Do not affect existing responsive behavior negatively
+* Do not break previous stable functionality
+* Keep implementation lightweight and maintainable
+* Reuse existing components wherever possible
+* Focus on clean spacing, sticky behavior, usability, and premium alignment

@@ -127,70 +127,74 @@ export default function AdminProducts() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div>
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-serif tracking-wide mb-1">Products</h1>
-            <p className="text-muted-foreground text-sm">
-              {isLoading ? "Loading…" : `${filtered.length} of ${products?.length ?? 0} products`}
-            </p>
-          </div>
-          <Button
-            asChild
-            className="bg-foreground text-background hover:bg-foreground/90 rounded-none uppercase tracking-widest text-xs h-10 px-6"
-          >
-            <a href="/admin/products/new">Add Product</a>
-          </Button>
-        </div>
+        {/* Sticky header: title + search + category tabs */}
+        <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-sm -mx-4 px-4 pt-4 pb-0 border-b border-border mb-4">
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, category or product code…"
-            className="pl-9 rounded-none border-border bg-card h-10 text-sm"
-          />
-        </div>
-
-        {/* Category filter tabs */}
-        <div className="relative border-b border-border overflow-x-hidden">
-          {canScrollLeft && (
-            <div className="absolute left-0 top-0 bottom-[1px] z-10 pointer-events-none">
-              <div className="h-full w-12 bg-gradient-to-r from-background to-transparent" />
+          {/* Header row */}
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div>
+              <h1 className="text-xl font-serif tracking-wide leading-tight">Products</h1>
+              <p className="text-muted-foreground text-xs mt-0.5">
+                {isLoading ? "Loading…" : `${filtered.length} of ${products?.length ?? 0} products`}
+              </p>
             </div>
-          )}
-          <div
-            ref={tabsRef}
-            className="flex items-end gap-0 overflow-x-auto scrollbar-hide"
-            style={{ overflowY: "hidden", touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
-          >
-            {allCategories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`
-                  relative shrink-0 pb-3 px-4 text-xs uppercase tracking-widest
-                  transition-colors duration-200 whitespace-nowrap
-                  ${activeCategory === cat ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
-                `}
-              >
-                {cat}
-                {activeCategory === cat && (
-                  <span className="absolute bottom-[-1px] left-3 right-3 h-[1.5px] bg-foreground" />
-                )}
-              </button>
-            ))}
-            <span className="shrink-0 w-4" aria-hidden="true" />
+            <Button
+              asChild
+              className="bg-foreground text-background hover:bg-foreground/90 rounded-none uppercase tracking-widest text-xs h-9 px-5 shrink-0"
+            >
+              <a href="/admin/products/new">+ Add</a>
+            </Button>
           </div>
-          {canScrollRight && (
-            <div className="absolute right-0 top-0 bottom-[1px] z-10 pointer-events-none">
-              <div className="h-full w-12 bg-gradient-to-l from-background to-transparent" />
+
+          {/* Search */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, category or product code…"
+              className="pl-9 rounded-none border-border bg-card h-9 text-sm"
+            />
+          </div>
+
+          {/* Category filter tabs */}
+          <div className="relative overflow-x-hidden">
+            {canScrollLeft && (
+              <div className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none">
+                <div className="h-full w-12 bg-gradient-to-r from-background to-transparent" />
+              </div>
+            )}
+            <div
+              ref={tabsRef}
+              className="flex items-end gap-0 overflow-x-auto scrollbar-hide"
+              style={{ overflowY: "hidden", touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
+            >
+              {allCategories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`
+                    relative shrink-0 pb-2.5 px-4 text-xs uppercase tracking-widest
+                    transition-colors duration-200 whitespace-nowrap
+                    ${activeCategory === cat ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
+                  `}
+                >
+                  {cat}
+                  {activeCategory === cat && (
+                    <span className="absolute bottom-[-1px] left-3 right-3 h-[1.5px] bg-foreground" />
+                  )}
+                </button>
+              ))}
+              <span className="shrink-0 w-4" aria-hidden="true" />
             </div>
-          )}
+            {canScrollRight && (
+              <div className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none">
+                <div className="h-full w-12 bg-gradient-to-l from-background to-transparent" />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Table */}
