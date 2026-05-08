@@ -37,15 +37,16 @@ export default function Catalog() {
 
   useEffect(() => {
     if (pageData === undefined) return;
+    const incoming = pageData.products;
     if (offset === 0) {
-      setAllProducts(pageData);
+      setAllProducts(incoming);
     } else {
       setAllProducts((prev) => {
         const seen = new Set(prev.map((p) => p.id));
-        return [...prev, ...pageData.filter((p) => !seen.has(p.id))];
+        return [...prev, ...incoming.filter((p) => !seen.has(p.id))];
       });
     }
-    setHasMore(pageData.length === PAGE_SIZE);
+    setHasMore(pageData.hasMore);
   }, [pageData, offset]);
 
   const handleCategoryChange = useCallback((category: string) => {
@@ -56,7 +57,6 @@ export default function Catalog() {
     setHasMore(true);
   }, [activeCategory]);
 
-  // Scroll active tab into view when category changes
   useEffect(() => {
     const container = tabsRef.current;
     if (!container) return;
@@ -93,13 +93,10 @@ export default function Catalog() {
     tabsRef.current?.scrollBy({ left: dir === "right" ? 160 : -160, behavior: "smooth" });
   };
 
-  // Intercept vertical wheel/trackpad events and redirect to horizontal scroll.
-  // Must be non-passive so we can call preventDefault() to stop page scroll.
   useEffect(() => {
     const el = tabsRef.current;
     if (!el) return;
     const handleWheel = (e: WheelEvent) => {
-      // If the gesture is already clearly horizontal, let it pass through
       if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
       e.preventDefault();
       el.scrollLeft += e.deltaY;
@@ -181,7 +178,6 @@ export default function Catalog() {
                   )}
                 </button>
               ))}
-              {/* Trailing spacer so last item isn't flush against the fade */}
               <span className="shrink-0 w-4" aria-hidden="true" />
             </div>
 

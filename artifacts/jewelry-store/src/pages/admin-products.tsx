@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Search, Edit, Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/layout";
@@ -9,6 +9,7 @@ import {
   useDeleteProduct,
   getListProductsQueryKey,
   getGetProductStatsQueryKey,
+  type Product,
 } from "@/lib/api-hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -29,41 +30,89 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 30;
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 
 export default function AdminProducts() {
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [offset, setOffset] = useState(0);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [hasMore, setHasMore] = useState(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
   const tabsRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const { data: categories } = useListCategories();
-  const { data: products, isLoading } = useListProducts();
+  const search = useDebounce(searchInput, 250);
 
+  const { data: categories } = useListCategories();
   const toggleStock = useToggleProductStock();
   const deleteProduct = useDeleteProduct();
 
-  const allCategories = ["All", ...(categories?.map((c) => c.name) ?? [])];
+  const queryParams = {
+    ...(activeCategory !== "All" ? { category: activeCategory } : {}),
+    ...(search ? { search } : {}),
+    limit: PAGE_SIZE,
+    offset,
+  };
 
-  const filtered = useMemo(() => {
-    if (!products) return [];
-    const q = search.trim().toLowerCase();
-    return products.filter((p) => {
-      const matchSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.productCode.toLowerCase().includes(q);
-      const matchCategory = activeCategory === "All" || p.category === activeCategory;
-      return matchSearch && matchCategory;
-    });
-  }, [products, search, activeCategory]);
+  const { data: pageData, isFetching, isLoading } = useListProducts(queryParams, {
+    query: { queryKey: getListProductsQueryKey(queryParams) },
+  });
 
+  // Merge pages; reset when search / category changes
+  useEffect(() => {
+    if (pageData === undefined) return;
+    const incoming = pageData.products;
+    if (offset === 0) {
+      setAllProducts(incoming);
+    } else {
+      setAllProducts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...incoming.filter((p) => !seen.has(p.id))];
+      });
+    }
+    setHasMore(pageData.hasMore);
+  }, [pageData, offset]);
+
+  // Reset when filters change
+  useEffect(() => {
+    setOffset(0);
+    setAllProducts([]);
+    setHasMore(true);
+  }, [search, activeCategory]);
+
+  // Infinite scroll sentinel
+  const loadMore = useCallback(() => {
+    if (!isFetching && hasMore) setOffset((prev) => prev + PAGE_SIZE);
+  }, [isFetching, hasMore]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  // Category tab scroll state
   const updateScrollState = useCallback(() => {
     const el = tabsRef.current;
     if (!el) return;
@@ -98,7 +147,10 @@ export default function AdminProducts() {
       { id, data: { inStock } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+          // Update in-place without refetch
+          setAllProducts((prev) =>
+            prev.map((p) => (p.id === id ? { ...p, inStock } : p))
+          );
           queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
           toast({ title: "Stock updated" });
         },
@@ -114,8 +166,9 @@ export default function AdminProducts() {
       { id },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+          setAllProducts((prev) => prev.filter((p) => p.id !== id));
           queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
           toast({ title: "Product deleted" });
         },
         onError: () => {
@@ -124,6 +177,9 @@ export default function AdminProducts() {
       }
     );
   };
+
+  const allCategories = ["All", ...(categories?.map((c) => c.name) ?? [])];
+  const total = pageData?.total;
 
   return (
     <AdminLayout fullHeight>
@@ -134,9 +190,9 @@ export default function AdminProducts() {
         <div className="flex items-center justify-between gap-3 mb-2.5">
           <div className="flex items-baseline gap-2.5 min-w-0">
             <h1 className="text-lg font-serif tracking-wide leading-none shrink-0">Products</h1>
-            {!isLoading && (
+            {!isLoading && total !== undefined && (
               <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                {filtered.length}/{products?.length ?? 0}
+                {allProducts.length}/{total}
               </span>
             )}
           </div>
@@ -152,9 +208,9 @@ export default function AdminProducts() {
         <div className="relative mb-2.5">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, category or code…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search name, code or material…"
             className="pl-8 rounded-none border-border bg-background h-8 text-sm"
           />
         </div>
@@ -193,7 +249,7 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* ── Scrollable product list (only this scrolls) ── */}
+      {/* ── Scrollable product table ── */}
       <div className="flex-1 overflow-y-auto overflow-x-auto bg-muted/20">
         <Table className="min-w-[560px]">
           <TableHeader>
@@ -208,7 +264,7 @@ export default function AdminProducts() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isLoading && offset === 0 ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell className="pl-4 pr-1"><Skeleton className="h-10 w-10" /></TableCell>
@@ -220,7 +276,7 @@ export default function AdminProducts() {
                   <TableCell className="pr-4"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))
-            ) : filtered.length === 0 ? (
+            ) : allProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-40 text-center text-muted-foreground font-serif italic text-sm">
                   {search || activeCategory !== "All"
@@ -229,7 +285,7 @@ export default function AdminProducts() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.slice(0, PAGE_SIZE).map((product) => (
+              allProducts.map((product) => (
                 <TableRow key={product.id} className="group">
                   <TableCell className="pl-4 pr-1 py-2">
                     <div className="h-10 w-10 bg-muted border border-border overflow-hidden shrink-0">
@@ -308,9 +364,32 @@ export default function AdminProducts() {
           </TableBody>
         </Table>
 
-        {!isLoading && filtered.length > PAGE_SIZE && (
+        {/* Infinite scroll sentinel + load-more skeletons */}
+        {hasMore && (
+          <div ref={sentinelRef} className="px-4 pb-4">
+            {isFetching && (
+              <Table className="min-w-[560px]">
+                <TableBody>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="pl-4 pr-1 w-[52px]"><Skeleton className="h-10 w-10" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-10" /></TableCell>
+                      <TableCell className="pr-4"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        )}
+
+        {!hasMore && allProducts.length > PAGE_SIZE && (
           <p className="text-center py-4 text-xs text-muted-foreground uppercase tracking-widest border-t border-border">
-            Showing first {PAGE_SIZE} — refine search to narrow down
+            All {total} products shown
           </p>
         )}
       </div>

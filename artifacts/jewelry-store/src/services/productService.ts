@@ -1,11 +1,19 @@
 import { apiFetch } from './api';
-import type { Product, CreateProductBody, UpdateProductBody, ListProductsParams, ProductStats } from '@/lib/api-hooks';
+import type {
+  Product,
+  ProductListResponse,
+  CreateProductBody,
+  UpdateProductBody,
+  ListProductsParams,
+  ProductStats,
+} from '@/lib/api-hooks';
 
 export function buildProductQuery(params: ListProductsParams): string {
   const qs = new URLSearchParams();
   if (params.category) qs.set('category', params.category);
   if (params.inStock !== undefined) qs.set('inStock', String(params.inStock));
   if (params.featured !== undefined) qs.set('featured', String(params.featured));
+  if (params.search) qs.set('search', params.search);
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
   if (params.offset !== undefined) qs.set('offset', String(params.offset));
   return qs.toString();
@@ -14,7 +22,7 @@ export function buildProductQuery(params: ListProductsParams): string {
 export const productService = {
   list: (params: ListProductsParams = {}) => {
     const q = buildProductQuery(params);
-    return apiFetch<Product[]>(`/products${q ? `?${q}` : ''}`);
+    return apiFetch<ProductListResponse>(`/products${q ? `?${q}` : ''}`);
   },
   get: (id: string) => apiFetch<Product>(`/products/${id}`),
   featured: () => apiFetch<Product[]>('/products/featured'),

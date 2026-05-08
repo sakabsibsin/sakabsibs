@@ -38,10 +38,17 @@ export type ProductStats = {
   categories: { category: string; count: number }[];
 };
 
+export type ProductListResponse = {
+  products: Product[];
+  total: number;
+  hasMore: boolean;
+};
+
 export type ListProductsParams = {
   category?: string;
   inStock?: boolean;
   featured?: boolean;
+  search?: string;
   limit?: number;
   offset?: number;
 };
@@ -80,9 +87,9 @@ export const getListSettingsQueryKey = () =>
 
 export function useListProducts(
   params: ListProductsParams = {},
-  options?: { query?: Partial<UseQueryOptions<Product[]>> }
+  options?: { query?: Partial<UseQueryOptions<ProductListResponse>> }
 ) {
-  return useQuery<Product[]>({
+  return useQuery<ProductListResponse>({
     queryKey: getListProductsQueryKey(params),
     queryFn: () => productService.list(params),
     ...options?.query,

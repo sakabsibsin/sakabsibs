@@ -6,7 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminDashboard() {
   const { data: stats, isLoading: statsLoading } = useGetProductStats();
-  const { data: products, isLoading: productsLoading } = useListProducts({ limit: 5 });
+  const { data: recentData, isLoading: productsLoading } = useListProducts({ limit: 5 });
+
+  const products = recentData?.products;
 
   const statCards = [
     { label: "Total Products", value: stats?.total },
@@ -85,12 +87,12 @@ export default function AdminDashboard() {
                   <Skeleton className="h-3.5 w-16" />
                 </div>
               ))
-            ) : products?.length === 0 ? (
+            ) : !products?.length ? (
               <div className="px-5 py-8 text-center text-muted-foreground font-serif italic text-sm">
                 No products yet. Add your first piece.
               </div>
             ) : (
-              products?.map((product) => (
+              products.map((product) => (
                 <div key={product.id} className="flex items-center gap-3 px-5 py-3">
                   <div className="h-10 w-10 bg-muted border border-border overflow-hidden shrink-0">
                     {product.images?.[0] && (

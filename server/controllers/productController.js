@@ -3,18 +3,26 @@ const Category = require('../models/Category');
 
 const listProducts = async (req, res) => {
   try {
-    const { category, inStock, featured, limit = 100, offset = 0 } = req.query;
+    const { category, inStock, featured, search, limit = 20, offset = 0 } = req.query;
+
     const filter = {};
     if (category) filter.category = category;
     if (inStock !== undefined) filter.inStock = inStock === 'true';
     if (featured !== undefined) filter.featured = featured === 'true';
+    if (search && search.trim()) {
+      const re = { $regex: search.trim(), $options: 'i' };
+      filter.$or = [{ name: re }, { productCode: re }, { material: re }];
+    }
 
-    const products = await Product.find(filter)
-      .sort({ createdAt: 1 })
-      .skip(parseInt(offset))
-      .limit(parseInt(limit));
+    const limitN = Math.min(parseInt(limit) || 20, 200);
+    const offsetN = parseInt(offset) || 0;
 
-    res.json(products);
+    const [products, total] = await Promise.all([
+      Product.find(filter).sort({ createdAt: -1 }).skip(offsetN).limit(limitN),
+      Product.countDocuments(filter),
+    ]);
+
+    res.json({ products, total, hasMore: offsetN + products.length < total });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -22,7 +30,7 @@ const listProducts = async (req, res) => {
 
 const getFeaturedProducts = async (req, res) => {
   try {
-    const products = await Product.find({ featured: true }).sort({ createdAt: 1 });
+    const products = await Product.find({ featured: true }).sort({ createdAt: -1 }).limit(12);
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -31,22 +39,20 @@ const getFeaturedProducts = async (req, res) => {
 
 const getProductStats = async (req, res) => {
   try {
-    const all = await Product.find();
-    const total = all.length;
-    const inStock = all.filter((p) => p.inStock).length;
-    const outOfStock = total - inStock;
-    const featured = all.filter((p) => p.featured).length;
+    const [total, inStock, featured, catAgg] = await Promise.all([
+      Product.countDocuments(),
+      Product.countDocuments({ inStock: true }),
+      Product.countDocuments({ featured: true }),
+      Product.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
+    ]);
 
-    const catMap = {};
-    for (const p of all) {
-      catMap[p.category] = (catMap[p.category] || 0) + 1;
-    }
-    const categories = Object.entries(catMap).map(([category, count]) => ({
-      category,
-      count,
-    }));
-
-    res.json({ total, inStock, outOfStock, featured, categories });
+    res.json({
+      total,
+      inStock,
+      outOfStock: total - inStock,
+      featured,
+      categories: catAgg.map((c) => ({ category: c._id, count: c.count })),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -81,15 +87,8 @@ const createProduct = async (req, res) => {
     const productCode = prefix + nextNum;
 
     const product = await Product.create({
-      name,
-      description,
-      price,
-      images,
-      material,
-      category,
-      inStock,
-      featured,
-      productCode,
+      name, description, price, images, material,
+      category, inStock, featured, productCode,
     });
 
     res.status(201).json(product);
