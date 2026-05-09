@@ -33,9 +33,8 @@ export default function Home() {
       </section>
       {/* Brand Statement */}
       <section className="py-20 md:py-28 px-4 max-w-3xl mx-auto text-center">
-        <h2 className="text-2xl md:text-3xl leading-relaxed text-foreground font-serif italic">
-          "Every piece is considered, every interaction unhurried. Pure lines, absolute precision, and nothing unnecessary."
-        </h2>
+        <h2 className="text-2xl md:text-3xl leading-relaxed text-foreground font-serif italic">Tarnish free | Affordable
+        Elevate your style to make you shine</h2>
       </section>
       {/* Featured Products */}
       <section className="px-3 sm:px-4 md:px-8 pb-16 md:pb-20">
