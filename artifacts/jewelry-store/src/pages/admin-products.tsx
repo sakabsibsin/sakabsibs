@@ -40,30 +40,35 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-// Column widths — must be identical between the header row and every data row
-// so the two sibling divs (header outside scroll, rows inside scroll) align.
+// ─── Column widths ────────────────────────────────────────────────────────────
+// MUST be byte-for-byte identical between the header div [B] and every row in [C].
+// Responsive gap: gap-2 on mobile (8px), gap-3 on sm+ (12px).
+// Mobile visible columns: thumb + name + price + stock + acts
+// Mobile fixed px: 44 + 68 + 44 + 64 + (4×8 gap) = 252px → name gets the rest
 const COL = {
-  thumb: "w-11 shrink-0",
-  name:  "flex-1 min-w-0",
-  code:  "w-[76px] shrink-0 hidden sm:block",
-  cat:   "w-[90px] shrink-0 hidden md:block",
-  price: "w-[88px] shrink-0",
-  stock: "w-[58px] shrink-0",
-  acts:  "w-[76px] shrink-0",
+  thumb: "w-11 shrink-0",              // 44px — thumbnail square
+  name:  "flex-1 min-w-0",             // flexible — primary real estate
+  code:  "w-[70px] shrink-0 hidden sm:block",   // 70px — code (sm+)
+  cat:   "w-[88px] shrink-0 hidden md:block",   // 88px — category (md+)
+  price: "w-[68px] shrink-0",          // 68px (was 88) — tighter on mobile
+  stock: "w-[44px] shrink-0",          // 44px (was 58) — just fits the Switch
+  acts:  "w-[64px] shrink-0",          // 64px (was 76) — two 28px btns + 4px gap
 };
+
+// Shared row layout — identical padding and gap in header [B] and rows [C]
+const ROW = "flex items-center gap-2 sm:gap-3 px-4";
 
 function RowSkeleton() {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border/60">
+    <div className={`${ROW} py-2.5 border-b border-border/50`}>
       <div className={COL.thumb}><Skeleton className="h-10 w-10" /></div>
-      <div className={COL.name}><Skeleton className="h-4 w-40" /></div>
-      <div className={`${COL.code} hidden sm:block`}><Skeleton className="h-4 w-14" /></div>
-      <div className={`${COL.cat} hidden md:block`}><Skeleton className="h-4 w-18" /></div>
-      <div className={COL.price}><Skeleton className="h-4 w-16" /></div>
+      <div className={COL.name}><Skeleton className="h-4 w-36" /><Skeleton className="h-3 w-20 mt-1.5" /></div>
+      <div className={COL.code}><Skeleton className="h-4 w-12" /></div>
+      <div className={COL.cat}><Skeleton className="h-4 w-16" /></div>
+      <div className={COL.price}><Skeleton className="h-4 w-14" /></div>
       <div className={COL.stock}><Skeleton className="h-5 w-9" /></div>
       <div className={`${COL.acts} flex justify-end gap-1`}>
-        <Skeleton className="h-8 w-8" />
-        <Skeleton className="h-8 w-8" />
+        <Skeleton className="h-7 w-7" /><Skeleton className="h-7 w-7" />
       </div>
     </div>
   );
@@ -78,18 +83,25 @@ export default function AdminProducts() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const tabsRef  = useRef<HTMLDivElement>(null);
+  const tabsRef     = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollRef   = useRef<HTMLDivElement>(null);
 
+  // ── Stable refs so IntersectionObserver/scroll listener never need rebuilding ──
+  // These are read inside the observer callbacks instead of closure values.
+  const isFetchingRef  = useRef(false);
+  const hasMoreRef     = useRef(true);
+  // Prevents duplicate triggers between observer + scroll fallback
+  const triggeredRef   = useRef(false);
+
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { toast }   = useToast();
   const [, setLocation] = useLocation();
 
   const search = useDebounce(searchInput, 250);
 
   const { data: categories } = useListCategories();
-  const toggleStock  = useToggleProductStock();
+  const toggleStock   = useToggleProductStock();
   const deleteProduct = useDeleteProduct();
 
   const queryParams = {
@@ -103,9 +115,24 @@ export default function AdminProducts() {
     query: { queryKey: getListProductsQueryKey(queryParams) },
   });
 
-  // Accumulate pages
+  // Keep refs in sync with React state — safe to read inside stable callbacks
+  useEffect(() => { isFetchingRef.current = isFetching; }, [isFetching]);
+  useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
+  // Unlock trigger guard once fetch completes
+  useEffect(() => { if (!isFetching) triggeredRef.current = false; }, [isFetching]);
+
+  // Stable load-more function — reads from refs, never causes observer to rebuild
+  // Using a ref for the function itself so the stable empty-dep effects can call it
+  const tryLoadMoreRef = useRef(() => {});
+  tryLoadMoreRef.current = () => {
+    if (isFetchingRef.current || !hasMoreRef.current || triggeredRef.current) return;
+    triggeredRef.current = true;
+    setOffset((prev) => prev + PAGE_SIZE);
+  };
+
+  // ── Accumulate pages ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (pageData === undefined) return;
+    if (!pageData) return;
     const incoming = pageData.products;
     if (offset === 0) {
       setAllProducts(incoming);
@@ -118,33 +145,47 @@ export default function AdminProducts() {
     setHasMore(pageData.hasMore);
   }, [pageData, offset]);
 
-  // Reset on filter change
+  // ── Reset on filter change ────────────────────────────────────────────────
   useEffect(() => {
+    triggeredRef.current = false;
     setOffset(0);
     setAllProducts([]);
     setHasMore(true);
     scrollRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [search, activeCategory]);
 
-  // Infinite scroll trigger
-  const loadMore = useCallback(() => {
-    if (!isFetching && hasMore) setOffset((prev) => prev + PAGE_SIZE);
-  }, [isFetching, hasMore]);
-
+  // ── IntersectionObserver — set up ONCE, never torn down during fetch cycles ──
+  // Root cause of the "stops loading" bug: the old effect depended on `loadMore`
+  // which changed every time isFetching/hasMore changed, causing the observer to
+  // disconnect and reconnect. On reconnect the sentinel was already out of view.
+  // Fix: read mutable state from refs inside the callback — empty dep array.
   useEffect(() => {
     const sentinel  = sentinelRef.current;
     const container = scrollRef.current;
     if (!sentinel || !container) return;
     const io = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMore(); },
-      { root: container, rootMargin: "200px" }
+      (entries) => { if (entries[0].isIntersecting) tryLoadMoreRef.current(); },
+      { root: container, rootMargin: "350px" }
     );
     io.observe(sentinel);
     return () => io.disconnect();
-  }, [loadMore]);
+  }, []); // ← intentionally empty — never recreated
 
-  // Category tab scroll-fade indicators
-  const updateScrollState = useCallback(() => {
+  // ── Scroll-based fallback — catches cases where sentinel never enters viewport ──
+  // e.g. first page is short, sentinel is visible but observer already saw it idle
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      if (scrollHeight - scrollTop - clientHeight < 400) tryLoadMoreRef.current();
+    };
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
+  }, []); // ← intentionally empty — never recreated
+
+  // ── Category tab scroll-fade indicators ──────────────────────────────────
+  const updateTabScroll = useCallback(() => {
     const el = tabsRef.current;
     if (!el) return;
     setCanScrollLeft(el.scrollLeft > 8);
@@ -154,12 +195,12 @@ export default function AdminProducts() {
   useEffect(() => {
     const el = tabsRef.current;
     if (!el) return;
-    updateScrollState();
-    el.addEventListener("scroll", updateScrollState, { passive: true });
-    const ro = new ResizeObserver(updateScrollState);
+    updateTabScroll();
+    el.addEventListener("scroll", updateTabScroll, { passive: true });
+    const ro = new ResizeObserver(updateTabScroll);
     ro.observe(el);
-    return () => { el.removeEventListener("scroll", updateScrollState); ro.disconnect(); };
-  }, [updateScrollState, categories]);
+    return () => { el.removeEventListener("scroll", updateTabScroll); ro.disconnect(); };
+  }, [updateTabScroll, categories]);
 
   useEffect(() => {
     const el = tabsRef.current;
@@ -173,6 +214,7 @@ export default function AdminProducts() {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
+  // ── Mutations ─────────────────────────────────────────────────────────────
   const handleToggleStock = (id: string, inStock: boolean) => {
     toggleStock.mutate({ id, data: { inStock } }, {
       onSuccess: () => {
@@ -203,22 +245,22 @@ export default function AdminProducts() {
     <AdminLayout fullHeight>
 
       {/*
-       * ══════════════════════════════════════════════════
-       *  WORKSPACE ARCHITECTURE
-       *  AdminLayout renders: flex flex-col h-[100dvh] overflow-hidden
-       *    └─ admin navbar  (shrink-0, h-14)
-       *    └─ <main>        (flex-1 overflow-hidden flex flex-col)
-       *         ├─ [A] Toolbar    — shrink-0  → never scrolls
-       *         ├─ [B] Col header — shrink-0  → never scrolls
-       *         └─ [C] Row list   — flex-1 min-h-0 overflow-y-auto → ONLY thing that scrolls
+       * ══════════════════════════════════════════════════════════
+       *  WORKSPACE LAYOUT (AdminLayout fullHeight renders as):
        *
-       *  No <table>, no sticky, no z-index fights.
-       *  [A] and [B] are plain flex siblings above [C].
-       *  Column widths are kept in COL constants so [B] and [C] rows always align.
-       * ══════════════════════════════════════════════════
+       *  div  h-[100dvh] overflow-hidden flex flex-col
+       *    header   shrink-0  h-14   ← admin navbar
+       *    main     flex-1 overflow-hidden flex flex-col
+       *      [A] Toolbar    shrink-0  ← title, search, tabs
+       *      [B] Col header shrink-0  ← fixed, never scrolls
+       *      [C] Row list   flex-1 min-h-0 overflow-y-auto  ← ONLY scroll zone
+       *
+       *  No <table>. No sticky. No z-index battles.
+       *  Header [B] and rows [C] share identical ROW class + COL widths.
+       * ══════════════════════════════════════════════════════════
        */}
 
-      {/* ── [A] TOOLBAR ─────────────────────────────────── */}
+      {/* ── [A] TOOLBAR ───────────────────────────────────────────────────── */}
       <div className="shrink-0 bg-background border-b border-border px-4 pt-3 pb-0">
 
         {/* Title + count + Add */}
@@ -285,9 +327,10 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* ── [B] COLUMN HEADER — sibling of scroll area, never inside it ─── */}
+      {/* ── [B] COLUMN HEADER — shrink-0, lives above the scroll container ── */}
+      {/* Uses identical ROW class + COL widths as every product row below */}
       <div className="shrink-0 bg-background border-b border-border">
-        <div className="flex items-center gap-3 px-4 py-2 text-[10px] uppercase tracking-widest text-muted-foreground font-medium select-none">
+        <div className={`${ROW} py-2 text-[10px] uppercase tracking-widest text-muted-foreground font-medium select-none`}>
           <div className={COL.thumb}>Img</div>
           <div className={COL.name}>Name</div>
           <div className={COL.code}>Code</div>
@@ -298,20 +341,20 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* ── [C] SCROLLABLE ROW LIST — the ONLY element that scrolls ──────── */}
+      {/* ── [C] SCROLLABLE ROW LIST — the ONLY element that scrolls ─────── */}
       <div
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
       >
-        {/* Initial loading skeletons */}
-        {isLoading && offset === 0 && (
+        {/* Initial loading */}
+        {isLoading && offset === 0 &&
           Array.from({ length: 12 }).map((_, i) => <RowSkeleton key={i} />)
-        )}
+        }
 
         {/* Empty state */}
         {!isLoading && allProducts.length === 0 && !isFetching && (
-          <div className="flex flex-col items-center justify-center h-48 text-center">
-            <p className="font-serif italic text-sm text-muted-foreground">
+          <div className="flex items-center justify-center h-48">
+            <p className="font-serif italic text-sm text-muted-foreground text-center px-6">
               {search || activeCategory !== "All"
                 ? "No products match your search."
                 : "No products yet. Add your first piece."}
@@ -323,7 +366,7 @@ export default function AdminProducts() {
         {allProducts.map((product) => (
           <div
             key={product.id}
-            className="flex items-center gap-3 px-4 py-2.5 border-b border-border/60 hover:bg-muted/20 transition-colors"
+            className={`${ROW} py-2.5 border-b border-border/50 hover:bg-muted/20 transition-colors`}
           >
             {/* Thumbnail */}
             <div className={COL.thumb}>
@@ -334,6 +377,7 @@ export default function AdminProducts() {
                     alt={product.name}
                     className="h-full w-full object-cover"
                     loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="h-full w-full bg-muted/60" />
@@ -343,7 +387,7 @@ export default function AdminProducts() {
 
             {/* Name */}
             <div className={COL.name}>
-              <p className="text-sm font-medium leading-tight line-clamp-2">{product.name}</p>
+              <p className="text-sm font-medium leading-snug line-clamp-2">{product.name}</p>
               {product.featured && (
                 <span className="mt-0.5 inline-block text-[8px] uppercase tracking-widest bg-muted border border-border px-1.5 py-px leading-none">
                   Featured
@@ -352,17 +396,17 @@ export default function AdminProducts() {
             </div>
 
             {/* Code */}
-            <div className={`${COL.code} text-xs font-mono text-muted-foreground`}>
+            <div className={`${COL.code} text-xs font-mono text-muted-foreground tabular-nums`}>
               {product.productCode}
             </div>
 
             {/* Category */}
-            <div className={`${COL.cat} text-sm text-muted-foreground capitalize`}>
+            <div className={`${COL.cat} text-xs text-muted-foreground capitalize`}>
               {product.category}
             </div>
 
             {/* Price */}
-            <div className={`${COL.price} text-sm whitespace-nowrap`}>
+            <div className={`${COL.price} text-xs whitespace-nowrap tabular-nums`}>
               ₹{product.price.toLocaleString("en-IN")}
             </div>
 
@@ -372,6 +416,7 @@ export default function AdminProducts() {
                 checked={product.inStock}
                 onCheckedChange={(checked) => handleToggleStock(product.id, checked)}
                 disabled={toggleStock.isPending}
+                className="scale-90"
               />
             </div>
 
@@ -380,10 +425,10 @@ export default function AdminProducts() {
               <Button
                 variant="outline"
                 size="icon"
-                className="rounded-none border-border h-8 w-8 shrink-0"
+                className="rounded-none border-border h-7 w-7 shrink-0"
                 onClick={() => setLocation(`/admin/products/${product.id}/edit`)}
               >
-                <Edit className="h-3.5 w-3.5" />
+                <Edit className="h-3 w-3" />
               </Button>
 
               <AlertDialog>
@@ -391,9 +436,9 @@ export default function AdminProducts() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground h-8 w-8 shrink-0"
+                    className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground h-7 w-7 shrink-0"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-none border-border">
@@ -404,9 +449,7 @@ export default function AdminProducts() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className="rounded-none uppercase tracking-widest text-xs">
-                      Cancel
-                    </AlertDialogCancel>
+                    <AlertDialogCancel className="rounded-none uppercase tracking-widest text-xs">Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => handleDelete(product.id)}
                       className="rounded-none uppercase tracking-widest text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -420,17 +463,17 @@ export default function AdminProducts() {
           </div>
         ))}
 
-        {/* Load-more skeletons — appear inline, no layout shift */}
-        {isFetching && offset > 0 && (
+        {/* Load-more skeletons — inline with rows, zero layout shift */}
+        {isFetching && offset > 0 &&
           Array.from({ length: 5 }).map((_, i) => <RowSkeleton key={`sk-${i}`} />)
-        )}
+        }
 
-        {/* IntersectionObserver sentinel */}
+        {/* IntersectionObserver sentinel — thin, always at the bottom */}
         <div ref={sentinelRef} className="h-px" aria-hidden />
 
-        {/* End-of-list message */}
+        {/* End-of-list */}
         {!hasMore && allProducts.length > PAGE_SIZE && (
-          <p className="text-center py-5 text-[10px] uppercase tracking-widest text-muted-foreground border-t border-border/60">
+          <p className="text-center py-5 text-[10px] uppercase tracking-widest text-muted-foreground border-t border-border/50">
             All {total} products loaded
           </p>
         )}
