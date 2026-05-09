@@ -12,7 +12,6 @@ import {
   type Product,
 } from "@/lib/api-hooks";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +40,35 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+// Column widths — must be identical between the header row and every data row
+// so the two sibling divs (header outside scroll, rows inside scroll) align.
+const COL = {
+  thumb: "w-11 shrink-0",
+  name:  "flex-1 min-w-0",
+  code:  "w-[76px] shrink-0 hidden sm:block",
+  cat:   "w-[90px] shrink-0 hidden md:block",
+  price: "w-[88px] shrink-0",
+  stock: "w-[58px] shrink-0",
+  acts:  "w-[76px] shrink-0",
+};
+
+function RowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border/60">
+      <div className={COL.thumb}><Skeleton className="h-10 w-10" /></div>
+      <div className={COL.name}><Skeleton className="h-4 w-40" /></div>
+      <div className={`${COL.code} hidden sm:block`}><Skeleton className="h-4 w-14" /></div>
+      <div className={`${COL.cat} hidden md:block`}><Skeleton className="h-4 w-18" /></div>
+      <div className={COL.price}><Skeleton className="h-4 w-16" /></div>
+      <div className={COL.stock}><Skeleton className="h-5 w-9" /></div>
+      <div className={`${COL.acts} flex justify-end gap-1`}>
+        <Skeleton className="h-8 w-8" />
+        <Skeleton className="h-8 w-8" />
+      </div>
+    </div>
+  );
+}
+
 export default function AdminProducts() {
   const [searchInput, setSearchInput] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -50,9 +78,9 @@ export default function AdminProducts() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const tabsRef = useRef<HTMLDivElement>(null);
+  const tabsRef  = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef   = useRef<HTMLDivElement>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -61,7 +89,7 @@ export default function AdminProducts() {
   const search = useDebounce(searchInput, 250);
 
   const { data: categories } = useListCategories();
-  const toggleStock = useToggleProductStock();
+  const toggleStock  = useToggleProductStock();
   const deleteProduct = useDeleteProduct();
 
   const queryParams = {
@@ -75,6 +103,7 @@ export default function AdminProducts() {
     query: { queryKey: getListProductsQueryKey(queryParams) },
   });
 
+  // Accumulate pages
   useEffect(() => {
     if (pageData === undefined) return;
     const incoming = pageData.products;
@@ -89,30 +118,32 @@ export default function AdminProducts() {
     setHasMore(pageData.hasMore);
   }, [pageData, offset]);
 
+  // Reset on filter change
   useEffect(() => {
     setOffset(0);
     setAllProducts([]);
     setHasMore(true);
-    // Scroll back to top when filters change
-    scrollRef.current?.scrollTo({ top: 0 });
+    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [search, activeCategory]);
 
+  // Infinite scroll trigger
   const loadMore = useCallback(() => {
     if (!isFetching && hasMore) setOffset((prev) => prev + PAGE_SIZE);
   }, [isFetching, hasMore]);
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
+    const sentinel  = sentinelRef.current;
     const container = scrollRef.current;
     if (!sentinel || !container) return;
-    const observer = new IntersectionObserver(
+    const io = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting) loadMore(); },
       { root: container, rootMargin: "200px" }
     );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    io.observe(sentinel);
+    return () => io.disconnect();
   }, [loadMore]);
 
+  // Category tab scroll-fade indicators
   const updateScrollState = useCallback(() => {
     const el = tabsRef.current;
     if (!el) return;
@@ -133,48 +164,36 @@ export default function AdminProducts() {
   useEffect(() => {
     const el = tabsRef.current;
     if (!el) return;
-    const handleWheel = (e: WheelEvent) => {
+    const onWheel = (e: WheelEvent) => {
       if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
       e.preventDefault();
       el.scrollLeft += e.deltaY;
     };
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
   const handleToggleStock = (id: string, inStock: boolean) => {
-    toggleStock.mutate(
-      { id, data: { inStock } },
-      {
-        onSuccess: () => {
-          setAllProducts((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, inStock } : p))
-          );
-          queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
-          toast({ title: "Stock updated" });
-        },
-        onError: () => {
-          toast({ title: "Error", description: "Failed to update stock.", variant: "destructive" });
-        },
-      }
-    );
+    toggleStock.mutate({ id, data: { inStock } }, {
+      onSuccess: () => {
+        setAllProducts((prev) => prev.map((p) => (p.id === id ? { ...p, inStock } : p)));
+        queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
+        toast({ title: "Stock updated" });
+      },
+      onError: () => toast({ title: "Error", description: "Failed to update stock.", variant: "destructive" }),
+    });
   };
 
   const handleDelete = (id: string) => {
-    deleteProduct.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          setAllProducts((prev) => prev.filter((p) => p.id !== id));
-          queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
-          toast({ title: "Product deleted" });
-        },
-        onError: () => {
-          toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" });
-        },
-      }
-    );
+    deleteProduct.mutate({ id }, {
+      onSuccess: () => {
+        setAllProducts((prev) => prev.filter((p) => p.id !== id));
+        queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+        toast({ title: "Product deleted" });
+      },
+      onError: () => toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" }),
+    });
   };
 
   const allCategories = ["All", ...(categories?.map((c) => c.name) ?? [])];
@@ -183,16 +202,32 @@ export default function AdminProducts() {
   return (
     <AdminLayout fullHeight>
 
-      {/* ── Layer 1: Toolbar — always visible, never scrolls, sits above everything ── */}
-      <div className="shrink-0 bg-background border-b border-border z-20 px-4 pt-3 pb-0">
+      {/*
+       * ══════════════════════════════════════════════════
+       *  WORKSPACE ARCHITECTURE
+       *  AdminLayout renders: flex flex-col h-[100dvh] overflow-hidden
+       *    └─ admin navbar  (shrink-0, h-14)
+       *    └─ <main>        (flex-1 overflow-hidden flex flex-col)
+       *         ├─ [A] Toolbar    — shrink-0  → never scrolls
+       *         ├─ [B] Col header — shrink-0  → never scrolls
+       *         └─ [C] Row list   — flex-1 min-h-0 overflow-y-auto → ONLY thing that scrolls
+       *
+       *  No <table>, no sticky, no z-index fights.
+       *  [A] and [B] are plain flex siblings above [C].
+       *  Column widths are kept in COL constants so [B] and [C] rows always align.
+       * ══════════════════════════════════════════════════
+       */}
 
-        {/* Title row */}
+      {/* ── [A] TOOLBAR ─────────────────────────────────── */}
+      <div className="shrink-0 bg-background border-b border-border px-4 pt-3 pb-0">
+
+        {/* Title + count + Add */}
         <div className="flex items-center justify-between gap-3 mb-2.5">
           <div className="flex items-baseline gap-2 min-w-0">
             <h1 className="text-base font-serif tracking-wide leading-none shrink-0">Products</h1>
             {!isLoading && total !== undefined && (
               <span className="text-[11px] text-muted-foreground tabular-nums">
-                {allProducts.length} / {total}
+                {allProducts.length}/{total}
               </span>
             )}
           </div>
@@ -204,217 +239,199 @@ export default function AdminProducts() {
           </Button>
         </div>
 
-        {/* Search — slightly taller, better tap target */}
+        {/* Search */}
         <div className="relative mb-2.5">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search name, code or material…"
-            className="pl-9 pr-3 rounded-none border-border bg-background h-9 text-sm"
+            placeholder="Search by name, code or material…"
+            className="pl-9 pr-3 rounded-none border-border bg-background h-9 text-sm placeholder:text-muted-foreground/60"
           />
         </div>
 
         {/* Category tabs */}
-        <div className="relative overflow-x-hidden -mx-4">
+        <div className="relative -mx-4 overflow-hidden">
           {canScrollLeft && (
-            <div className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none w-8 bg-gradient-to-r from-background to-transparent" />
+            <div className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none w-6 bg-gradient-to-r from-background to-transparent" />
           )}
           <div
             ref={tabsRef}
-            className="flex items-end gap-0 overflow-x-auto scrollbar-hide px-4"
-            style={{ overflowY: "hidden", touchAction: "pan-x" }}
+            className="flex items-end overflow-x-auto px-4"
+            style={{ overflowY: "hidden", scrollbarWidth: "none", touchAction: "pan-x" }}
           >
             {allCategories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`
-                  relative shrink-0 pb-2 px-3 text-[11px] uppercase tracking-widest
-                  transition-colors duration-150 whitespace-nowrap
-                  ${activeCategory === cat ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
-                `}
+                className={[
+                  "relative shrink-0 pb-2.5 px-3 text-[10px] uppercase tracking-widest whitespace-nowrap transition-colors duration-150",
+                  activeCategory === cat
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground/70",
+                ].join(" ")}
               >
                 {cat}
                 {activeCategory === cat && (
-                  <span className="absolute bottom-0 left-2 right-2 h-[1.5px] bg-foreground" />
+                  <span className="absolute bottom-0 left-2 right-2 h-[1.5px] bg-foreground rounded-full" />
                 )}
               </button>
             ))}
-            <span className="shrink-0 w-4" aria-hidden="true" />
+            <span className="shrink-0 w-3" aria-hidden />
           </div>
           {canScrollRight && (
-            <div className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none w-8 bg-gradient-to-l from-background to-transparent" />
+            <div className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none w-6 bg-gradient-to-l from-background to-transparent" />
           )}
         </div>
       </div>
 
-      {/* ── Layer 2: Scroll area — only this scrolls vertically ── */}
-      {/*
-        KEY ARCHITECTURE NOTE:
-        - overflow-y-auto creates the vertical scroll container
-        - overflow-x-auto handles wide tables
-        - sticky top-0 on thead sticks to y=0 of THIS container (right below toolbar)
-        - min-h-0 is required so flex children can shrink below their content size
-      */}
+      {/* ── [B] COLUMN HEADER — sibling of scroll area, never inside it ─── */}
+      <div className="shrink-0 bg-background border-b border-border">
+        <div className="flex items-center gap-3 px-4 py-2 text-[10px] uppercase tracking-widest text-muted-foreground font-medium select-none">
+          <div className={COL.thumb}>Img</div>
+          <div className={COL.name}>Name</div>
+          <div className={COL.code}>Code</div>
+          <div className={COL.cat}>Category</div>
+          <div className={COL.price}>Price</div>
+          <div className={COL.stock}>Stock</div>
+          <div className={`${COL.acts} text-right`}>Actions</div>
+        </div>
+      </div>
+
+      {/* ── [C] SCROLLABLE ROW LIST — the ONLY element that scrolls ──────── */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-auto"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
       >
-        <Table className="min-w-[560px] w-full">
+        {/* Initial loading skeletons */}
+        {isLoading && offset === 0 && (
+          Array.from({ length: 12 }).map((_, i) => <RowSkeleton key={i} />)
+        )}
 
-          {/* ── Layer 3: Table header — sticky within the scroll container ── */}
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="sticky top-0 bg-background border-b border-border z-10 w-[52px] pl-4 pr-1 py-2.5 text-[10px] uppercase tracking-widest font-medium">
-                Img
-              </TableHead>
-              <TableHead className="sticky top-0 bg-background border-b border-border z-10 py-2.5 text-[10px] uppercase tracking-widest font-medium">
-                Name
-              </TableHead>
-              <TableHead className="sticky top-0 bg-background border-b border-border z-10 hidden sm:table-cell py-2.5 text-[10px] uppercase tracking-widest font-medium">
-                Code
-              </TableHead>
-              <TableHead className="sticky top-0 bg-background border-b border-border z-10 hidden md:table-cell py-2.5 text-[10px] uppercase tracking-widest font-medium">
-                Category
-              </TableHead>
-              <TableHead className="sticky top-0 bg-background border-b border-border z-10 py-2.5 text-[10px] uppercase tracking-widest font-medium">
-                Price
-              </TableHead>
-              <TableHead className="sticky top-0 bg-background border-b border-border z-10 py-2.5 text-[10px] uppercase tracking-widest font-medium">
-                Stock
-              </TableHead>
-              <TableHead className="sticky top-0 bg-background border-b border-border z-10 text-right pr-4 py-2.5 text-[10px] uppercase tracking-widest font-medium">
-                Actions
-              </TableHead>
-            </TableRow>
-          </TableHeader>
+        {/* Empty state */}
+        {!isLoading && allProducts.length === 0 && !isFetching && (
+          <div className="flex flex-col items-center justify-center h-48 text-center">
+            <p className="font-serif italic text-sm text-muted-foreground">
+              {search || activeCategory !== "All"
+                ? "No products match your search."
+                : "No products yet. Add your first piece."}
+            </p>
+          </div>
+        )}
 
-          {/* ── Layer 4: Scrollable rows only ── */}
-          <TableBody>
-            {isLoading && offset === 0 ? (
-              Array.from({ length: 10 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  <TableCell className="pl-4 pr-1 py-2"><Skeleton className="h-10 w-10" /></TableCell>
-                  <TableCell className="py-2"><Skeleton className="h-4 w-36" /></TableCell>
-                  <TableCell className="hidden sm:table-cell py-2"><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell className="hidden md:table-cell py-2"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="py-2"><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell className="py-2"><Skeleton className="h-6 w-10" /></TableCell>
-                  <TableCell className="pr-4 py-2"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            ) : allProducts.length === 0 && !isFetching ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="h-48 text-center text-muted-foreground font-serif italic text-sm">
-                  {search || activeCategory !== "All"
-                    ? "No products match your search."
-                    : "No products yet. Add your first piece."}
-                </TableCell>
-              </TableRow>
-            ) : (
-              allProducts.map((product) => (
-                <TableRow key={product.id} className="group">
-                  <TableCell className="pl-4 pr-1 py-2">
-                    <div className="h-10 w-10 bg-muted border border-border overflow-hidden shrink-0">
-                      {product.images?.[0] ? (
-                        <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="h-full w-full bg-muted" />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-2 font-medium max-w-[150px]">
-                    <span className="line-clamp-2 text-sm leading-tight">{product.name}</span>
-                    {product.featured && (
-                      <span className="mt-0.5 block text-[9px] uppercase tracking-widest bg-muted px-1.5 py-0.5 border border-border w-fit">
-                        Featured
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell py-2 text-muted-foreground text-xs font-mono">
-                    {product.productCode}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell py-2 capitalize text-muted-foreground text-sm">
-                    {product.category}
-                  </TableCell>
-                  <TableCell className="py-2 text-sm whitespace-nowrap">
-                    ₹{product.price.toLocaleString("en-IN")}
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <Switch
-                      checked={product.inStock}
-                      onCheckedChange={(checked) => handleToggleStock(product.id, checked)}
-                      disabled={toggleStock.isPending}
-                    />
-                  </TableCell>
-                  <TableCell className="py-2 pr-4 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="rounded-none border-border h-8 w-8"
-                        onClick={() => setLocation(`/admin/products/${product.id}/edit`)}
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground h-8 w-8"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-none border-border">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="font-serif">Delete Product</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{product.name}"? This cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="rounded-none uppercase tracking-widest text-xs">Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(product.id)}
-                              className="rounded-none uppercase tracking-widest text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+        {/* Product rows */}
+        {allProducts.map((product) => (
+          <div
+            key={product.id}
+            className="flex items-center gap-3 px-4 py-2.5 border-b border-border/60 hover:bg-muted/20 transition-colors"
+          >
+            {/* Thumbnail */}
+            <div className={COL.thumb}>
+              <div className="h-10 w-10 bg-muted border border-border overflow-hidden">
+                {product.images?.[0] ? (
+                  <img
+                    src={product.images[0]}
+                    alt={product.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-muted/60" />
+                )}
+              </div>
+            </div>
 
-            {/* Inline load-more skeletons — inside tbody, no layout shift */}
-            {isFetching && offset > 0 &&
-              Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={`skel-${i}`} className="hover:bg-transparent">
-                  <TableCell className="pl-4 pr-1 py-2"><Skeleton className="h-10 w-10" /></TableCell>
-                  <TableCell className="py-2"><Skeleton className="h-4 w-36" /></TableCell>
-                  <TableCell className="hidden sm:table-cell py-2"><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell className="hidden md:table-cell py-2"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="py-2"><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell className="py-2"><Skeleton className="h-6 w-10" /></TableCell>
-                  <TableCell className="pr-4 py-2"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            }
-          </TableBody>
-        </Table>
+            {/* Name */}
+            <div className={COL.name}>
+              <p className="text-sm font-medium leading-tight line-clamp-2">{product.name}</p>
+              {product.featured && (
+                <span className="mt-0.5 inline-block text-[8px] uppercase tracking-widest bg-muted border border-border px-1.5 py-px leading-none">
+                  Featured
+                </span>
+              )}
+            </div>
 
-        {/* Sentinel for IntersectionObserver — outside the table, inside scroll container */}
-        <div ref={sentinelRef} className="h-px" />
+            {/* Code */}
+            <div className={`${COL.code} text-xs font-mono text-muted-foreground`}>
+              {product.productCode}
+            </div>
 
+            {/* Category */}
+            <div className={`${COL.cat} text-sm text-muted-foreground capitalize`}>
+              {product.category}
+            </div>
+
+            {/* Price */}
+            <div className={`${COL.price} text-sm whitespace-nowrap`}>
+              ₹{product.price.toLocaleString("en-IN")}
+            </div>
+
+            {/* Stock toggle */}
+            <div className={COL.stock}>
+              <Switch
+                checked={product.inStock}
+                onCheckedChange={(checked) => handleToggleStock(product.id, checked)}
+                disabled={toggleStock.isPending}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className={`${COL.acts} flex justify-end gap-1`}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-none border-border h-8 w-8 shrink-0"
+                onClick={() => setLocation(`/admin/products/${product.id}/edit`)}
+              >
+                <Edit className="h-3.5 w-3.5" />
+              </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-none border-border text-destructive hover:bg-destructive hover:text-destructive-foreground h-8 w-8 shrink-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-none border-border">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-serif">Delete Product</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{product.name}"? This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-none uppercase tracking-widest text-xs">
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDelete(product.id)}
+                      className="rounded-none uppercase tracking-widest text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        ))}
+
+        {/* Load-more skeletons — appear inline, no layout shift */}
+        {isFetching && offset > 0 && (
+          Array.from({ length: 5 }).map((_, i) => <RowSkeleton key={`sk-${i}`} />)
+        )}
+
+        {/* IntersectionObserver sentinel */}
+        <div ref={sentinelRef} className="h-px" aria-hidden />
+
+        {/* End-of-list message */}
         {!hasMore && allProducts.length > PAGE_SIZE && (
-          <p className="text-center py-5 text-[11px] text-muted-foreground uppercase tracking-widest border-t border-border">
-            All {total} products shown
+          <p className="text-center py-5 text-[10px] uppercase tracking-widest text-muted-foreground border-t border-border/60">
+            All {total} products loaded
           </p>
         )}
       </div>
