@@ -40,34 +40,35 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-// ─── Column widths ────────────────────────────────────────────────────────────
-// MUST be byte-for-byte identical between the header div [B] and every row in [C].
-// Responsive gap: gap-2 on mobile (8px), gap-3 on sm+ (12px).
-// Mobile visible columns: thumb + name + price + stock + acts
-// Mobile fixed px: 44 + 68 + 44 + 64 + (4×8 gap) = 252px → name gets the rest
+// ─── Column widths ─────────────────────────────────────────────────────────────
+// Byte-for-byte identical between header [B] and every data row in [C].
+// Responsive gap: gap-2 mobile (8 px) → gap-3 sm+ (12 px).
+// Mobile fixed cols: thumb(44) + price(68) + stock(44) + acts(64) + 4×8 gap(32) = 252 px
+// → name column gets everything else.
 const COL = {
-  thumb: "w-11 shrink-0",              // 44px — thumbnail square
-  name:  "flex-1 min-w-0",             // flexible — primary real estate
-  code:  "w-[70px] shrink-0 hidden sm:block",   // 70px — code (sm+)
-  cat:   "w-[88px] shrink-0 hidden md:block",   // 88px — category (md+)
-  price: "w-[68px] shrink-0",          // 68px (was 88) — tighter on mobile
-  stock: "w-[44px] shrink-0",          // 44px (was 58) — just fits the Switch
-  acts:  "w-[64px] shrink-0",          // 64px (was 76) — two 28px btns + 4px gap
+  thumb: "w-11 shrink-0",
+  name:  "flex-1 min-w-0",
+  code:  "w-[70px] shrink-0 hidden sm:block",
+  cat:   "w-[88px] shrink-0 hidden md:block",
+  price: "w-[68px] shrink-0",
+  stock: "w-[44px] shrink-0",
+  acts:  "w-[64px] shrink-0",
 };
 
-// Shared row layout — identical padding and gap in header [B] and rows [C]
+// Shared flex row — used verbatim in both [B] header and [C] data rows
 const ROW = "flex items-center gap-2 sm:gap-3 px-4";
 
+// ─── Skeleton row — one text line (matches typical product row height) ─────────
 function RowSkeleton() {
   return (
     <div className={`${ROW} py-2.5 border-b border-border/50`}>
       <div className={COL.thumb}><Skeleton className="h-10 w-10" /></div>
-      <div className={COL.name}><Skeleton className="h-4 w-36" /><Skeleton className="h-3 w-20 mt-1.5" /></div>
-      <div className={COL.code}><Skeleton className="h-4 w-12" /></div>
-      <div className={COL.cat}><Skeleton className="h-4 w-16" /></div>
-      <div className={COL.price}><Skeleton className="h-4 w-14" /></div>
-      <div className={COL.stock}><Skeleton className="h-5 w-9" /></div>
-      <div className={`${COL.acts} flex justify-end gap-1`}>
+      <div className={COL.name}><Skeleton className="h-3.5 w-36" /></div>
+      <div className={COL.code}><Skeleton className="h-3.5 w-12" /></div>
+      <div className={COL.cat}><Skeleton className="h-3.5 w-16" /></div>
+      <div className={COL.price}><Skeleton className="h-3.5 w-14" /></div>
+      <div className={`${COL.stock} flex items-center`}><Skeleton className="h-5 w-9" /></div>
+      <div className={`${COL.acts} flex items-center justify-end gap-1`}>
         <Skeleton className="h-7 w-7" /><Skeleton className="h-7 w-7" />
       </div>
     </div>
@@ -75,24 +76,32 @@ function RowSkeleton() {
 }
 
 export default function AdminProducts() {
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput]     = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [offset, setOffset] = useState(0);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [offset, setOffset]               = useState(0);
+  const [allProducts, setAllProducts]     = useState<Product[]>([]);
+  const [hasMore, setHasMore]             = useState(true);
+  const [canScrollLeft, setCanScrollLeft]   = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   const tabsRef     = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollRef   = useRef<HTMLDivElement>(null);
 
-  // ── Stable refs so IntersectionObserver/scroll listener never need rebuilding ──
-  // These are read inside the observer callbacks instead of closure values.
-  const isFetchingRef  = useRef(false);
-  const hasMoreRef     = useRef(true);
-  // Prevents duplicate triggers between observer + scroll fallback
-  const triggeredRef   = useRef(false);
+  // ── Stable refs read inside observer/scroll callbacks ────────────────────────
+  // Never cause the observer to rebuild — that was the original infinite-load bug.
+  const isFetchingRef = useRef(false);
+  const hasMoreRef    = useRef(true);
+  const triggeredRef  = useRef(false);   // prevents observer + scroll double-fire
+
+  // ── Data-ready guard — fixes "Manage Products" quick-action loading bug ──────
+  // Root cause: the IntersectionObserver fires immediately on mount because the
+  // scroll container is empty (sentinel is fully visible). At that instant,
+  // isFetchingRef is still false because the React Query fetch hasn't started
+  // yet (the ref-sync useEffect runs after the observer fires). So tryLoadMore
+  // bumps offset → 30 BEFORE page 0 returns, corrupting the accumulation logic.
+  // Fix: block tryLoadMore until the first page of data has arrived.
+  const dataReadyRef = useRef(false);
 
   const queryClient = useQueryClient();
   const { toast }   = useToast();
@@ -115,24 +124,29 @@ export default function AdminProducts() {
     query: { queryKey: getListProductsQueryKey(queryParams) },
   });
 
-  // Keep refs in sync with React state — safe to read inside stable callbacks
+  // Keep refs in sync with React state
   useEffect(() => { isFetchingRef.current = isFetching; }, [isFetching]);
   useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
-  // Unlock trigger guard once fetch completes
+  // Unlock trigger guard once current fetch completes
   useEffect(() => { if (!isFetching) triggeredRef.current = false; }, [isFetching]);
 
-  // Stable load-more function — reads from refs, never causes observer to rebuild
-  // Using a ref for the function itself so the stable empty-dep effects can call it
+  // ── Load-more function (via ref — stable, no deps, safe for empty-dep effects) ─
   const tryLoadMoreRef = useRef(() => {});
   tryLoadMoreRef.current = () => {
-    if (isFetchingRef.current || !hasMoreRef.current || triggeredRef.current) return;
+    if (
+      !dataReadyRef.current ||   // wait for first page before triggering more
+      isFetchingRef.current  ||  // already fetching
+      !hasMoreRef.current    ||  // no more pages
+      triggeredRef.current       // already triggered for this fetch cycle
+    ) return;
     triggeredRef.current = true;
     setOffset((prev) => prev + PAGE_SIZE);
   };
 
-  // ── Accumulate pages ──────────────────────────────────────────────────────
+  // ── Accumulate pages ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!pageData) return;
+    dataReadyRef.current = true;           // ← mark data as ready on first arrival
     const incoming = pageData.products;
     if (offset === 0) {
       setAllProducts(incoming);
@@ -145,20 +159,19 @@ export default function AdminProducts() {
     setHasMore(pageData.hasMore);
   }, [pageData, offset]);
 
-  // ── Reset on filter change ────────────────────────────────────────────────
+  // ── Reset on filter change ────────────────────────────────────────────────────
   useEffect(() => {
-    triggeredRef.current = false;
+    dataReadyRef.current  = false;   // ← block load-more until new page 0 arrives
+    triggeredRef.current  = false;
     setOffset(0);
     setAllProducts([]);
     setHasMore(true);
     scrollRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [search, activeCategory]);
 
-  // ── IntersectionObserver — set up ONCE, never torn down during fetch cycles ──
-  // Root cause of the "stops loading" bug: the old effect depended on `loadMore`
-  // which changed every time isFetching/hasMore changed, causing the observer to
-  // disconnect and reconnect. On reconnect the sentinel was already out of view.
-  // Fix: read mutable state from refs inside the callback — empty dep array.
+  // ── IntersectionObserver — set up ONCE, never recreated ──────────────────────
+  // Reading mutable state from refs (not closure values) so this effect stays
+  // stable with empty deps. Sentinel visibility triggers tryLoadMoreRef.current().
   useEffect(() => {
     const sentinel  = sentinelRef.current;
     const container = scrollRef.current;
@@ -169,10 +182,9 @@ export default function AdminProducts() {
     );
     io.observe(sentinel);
     return () => io.disconnect();
-  }, []); // ← intentionally empty — never recreated
+  }, []); // intentionally empty — never torn down during fetch cycles
 
-  // ── Scroll-based fallback — catches cases where sentinel never enters viewport ──
-  // e.g. first page is short, sentinel is visible but observer already saw it idle
+  // ── Scroll fallback — catches sentinel-already-visible edge cases ─────────────
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -182,9 +194,9 @@ export default function AdminProducts() {
     };
     container.addEventListener("scroll", onScroll, { passive: true });
     return () => container.removeEventListener("scroll", onScroll);
-  }, []); // ← intentionally empty — never recreated
+  }, []); // intentionally empty
 
-  // ── Category tab scroll-fade indicators ──────────────────────────────────
+  // ── Category tab scroll-fade indicators ──────────────────────────────────────
   const updateTabScroll = useCallback(() => {
     const el = tabsRef.current;
     if (!el) return;
@@ -214,7 +226,7 @@ export default function AdminProducts() {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  // ── Mutations ─────────────────────────────────────────────────────────────
+  // ── Mutations ─────────────────────────────────────────────────────────────────
   const handleToggleStock = (id: string, inStock: boolean) => {
     toggleStock.mutate({ id, data: { inStock } }, {
       onSuccess: () => {
@@ -245,22 +257,21 @@ export default function AdminProducts() {
     <AdminLayout fullHeight>
 
       {/*
-       * ══════════════════════════════════════════════════════════
-       *  WORKSPACE LAYOUT (AdminLayout fullHeight renders as):
+       * ══════════════════════════════════════════════════════════════════════
+       *  WORKSPACE ARCHITECTURE
+       *  AdminLayout(fullHeight) → h-[100dvh] overflow-hidden flex flex-col
+       *    header  shrink-0 h-14
+       *    main    flex-1 overflow-hidden flex flex-col
+       *      [A] Toolbar    shrink-0  — title / search / category tabs
+       *      [B] Col header shrink-0  — never scrolls
+       *      [C] Row list   flex-1 min-h-0 overflow-y-auto  — ONLY scroll zone
        *
-       *  div  h-[100dvh] overflow-hidden flex flex-col
-       *    header   shrink-0  h-14   ← admin navbar
-       *    main     flex-1 overflow-hidden flex flex-col
-       *      [A] Toolbar    shrink-0  ← title, search, tabs
-       *      [B] Col header shrink-0  ← fixed, never scrolls
-       *      [C] Row list   flex-1 min-h-0 overflow-y-auto  ← ONLY scroll zone
-       *
-       *  No <table>. No sticky. No z-index battles.
-       *  Header [B] and rows [C] share identical ROW class + COL widths.
-       * ══════════════════════════════════════════════════════════
+       *  No <table>. No sticky. No z-index.
+       *  [B] header and [C] rows share the exact same ROW class + COL widths.
+       * ══════════════════════════════════════════════════════════════════════
        */}
 
-      {/* ── [A] TOOLBAR ───────────────────────────────────────────────────── */}
+      {/* ── [A] TOOLBAR ────────────────────────────────────────────────────── */}
       <div className="shrink-0 bg-background border-b border-border px-4 pt-3 pb-0">
 
         {/* Title + count + Add */}
@@ -288,7 +299,7 @@ export default function AdminProducts() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by name, code or material…"
-            className="pl-9 pr-3 rounded-none border-border bg-background h-9 text-sm placeholder:text-muted-foreground/60 border-t-[1px] border-r-[1px] border-b-[1px] border-l-[1px] pt-[5px] pb-[5px]"
+            className="pl-9 pr-3 rounded-none border-border bg-background h-9 text-sm placeholder:text-muted-foreground/60"
           />
         </div>
 
@@ -327,8 +338,8 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* ── [B] COLUMN HEADER — shrink-0, lives above the scroll container ── */}
-      {/* Uses identical ROW class + COL widths as every product row below */}
+      {/* ── [B] COLUMN HEADER — shrink-0, lives above scroll zone ────────── */}
+      {/* Must use identical ROW class and COL widths as every data row below  */}
       <div className="shrink-0 bg-background border-b border-border">
         <div className={`${ROW} py-2 text-[10px] uppercase tracking-widest text-muted-foreground font-medium select-none`}>
           <div className={COL.thumb}>Img</div>
@@ -336,17 +347,17 @@ export default function AdminProducts() {
           <div className={COL.code}>Code</div>
           <div className={COL.cat}>Category</div>
           <div className={COL.price}>Price</div>
-          <div className={COL.stock}>Stock</div>
-          <div className={`${COL.acts} text-right`}>Actions</div>
+          <div className={`${COL.stock} flex items-center`}>Stock</div>
+          <div className={`${COL.acts} flex items-center justify-end`}>Actions</div>
         </div>
       </div>
 
-      {/* ── [C] SCROLLABLE ROW LIST — the ONLY element that scrolls ─────── */}
+      {/* ── [C] SCROLLABLE ROW LIST — the ONLY element that scrolls ───────── */}
       <div
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
       >
-        {/* Initial loading */}
+        {/* Initial load skeletons */}
         {isLoading && offset === 0 &&
           Array.from({ length: 12 }).map((_, i) => <RowSkeleton key={i} />)
         }
@@ -362,7 +373,7 @@ export default function AdminProducts() {
           </div>
         )}
 
-        {/* Product rows */}
+        {/* ── Product rows ────────────────────────────────────────────────── */}
         {allProducts.map((product) => (
           <div
             key={product.id}
@@ -385,9 +396,11 @@ export default function AdminProducts() {
               </div>
             </div>
 
-            {/* Name */}
+            {/* Name — slightly tighter size for compact admin density */}
             <div className={COL.name}>
-              <p className="text-sm font-medium leading-snug line-clamp-2">{product.name}</p>
+              <p className="text-[13px] font-medium leading-snug line-clamp-2">
+                {product.name}
+              </p>
               {product.featured && (
                 <span className="mt-0.5 inline-block text-[8px] uppercase tracking-widest bg-muted border border-border px-1.5 py-px leading-none">
                   Featured
@@ -401,7 +414,7 @@ export default function AdminProducts() {
             </div>
 
             {/* Category */}
-            <div className={`${COL.cat} text-xs text-muted-foreground capitalize`}>
+            <div className={`${COL.cat} text-xs text-muted-foreground capitalize truncate`}>
               {product.category}
             </div>
 
@@ -410,8 +423,8 @@ export default function AdminProducts() {
               ₹{product.price.toLocaleString("en-IN")}
             </div>
 
-            {/* Stock toggle */}
-            <div className={COL.stock}>
+            {/* Stock toggle — explicit flex centers the Switch within the column */}
+            <div className={`${COL.stock} flex items-center`}>
               <Switch
                 checked={product.inStock}
                 onCheckedChange={(checked) => handleToggleStock(product.id, checked)}
@@ -420,8 +433,8 @@ export default function AdminProducts() {
               />
             </div>
 
-            {/* Actions */}
-            <div className={`${COL.acts} flex justify-end gap-1`}>
+            {/* Actions — mirrors header's justify-end alignment */}
+            <div className={`${COL.acts} flex items-center justify-end gap-1`}>
               <Button
                 variant="outline"
                 size="icon"
@@ -463,15 +476,15 @@ export default function AdminProducts() {
           </div>
         ))}
 
-        {/* Load-more skeletons — inline with rows, zero layout shift */}
+        {/* Load-more skeletons — inline, no layout shift */}
         {isFetching && offset > 0 &&
           Array.from({ length: 5 }).map((_, i) => <RowSkeleton key={`sk-${i}`} />)
         }
 
-        {/* IntersectionObserver sentinel — thin, always at the bottom */}
+        {/* IntersectionObserver sentinel */}
         <div ref={sentinelRef} className="h-px" aria-hidden />
 
-        {/* End-of-list */}
+        {/* End-of-list marker */}
         {!hasMore && allProducts.length > PAGE_SIZE && (
           <p className="text-center py-5 text-[10px] uppercase tracking-widest text-muted-foreground border-t border-border/50">
             All {total} products loaded
