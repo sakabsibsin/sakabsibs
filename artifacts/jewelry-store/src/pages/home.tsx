@@ -22,7 +22,7 @@ export default function Home() {
         <div className="relative z-10 flex items-center justify-center h-full px-4">
           <div className="text-center p-8 sm:p-12 bg-background/50 backdrop-blur-sm border border-border/50">
             <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-[0.1em] text-foreground font-serif">SAKAB</h1>
-            <p className="mt-6 text-sm md:text-base tracking-[0.2em] uppercase text-foreground/80">Whisper-quiet luxury</p>
+            <p className="mt-6 text-sm md:text-base tracking-[0.2em] uppercase text-foreground/80">Elevate your style</p>
             <div className="mt-10 md:mt-12">
               <Link href="/products" className="inline-block border border-foreground px-8 py-3 text-sm uppercase tracking-widest hover:bg-foreground hover:text-background transition-colors duration-500">
                 Discover the Collection
