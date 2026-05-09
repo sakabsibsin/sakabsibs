@@ -21,7 +21,7 @@ export default function Home() {
         />
         <div className="relative z-10 flex items-center justify-center h-full px-4">
           <div className="text-center p-8 sm:p-12 bg-background/50 backdrop-blur-sm border border-border/50">
-            <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-[0.1em] text-foreground font-serif">AURUM</h1>
+            <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-[0.1em] text-foreground font-serif">SAKAB</h1>
             <p className="mt-6 text-sm md:text-base tracking-[0.2em] uppercase text-foreground/80">Whisper-quiet luxury</p>
             <div className="mt-10 md:mt-12">
               <Link href="/products" className="inline-block border border-foreground px-8 py-3 text-sm uppercase tracking-widest hover:bg-foreground hover:text-background transition-colors duration-500">
@@ -31,14 +31,12 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Brand Statement */}
       <section className="py-20 md:py-28 px-4 max-w-3xl mx-auto text-center">
         <h2 className="text-2xl md:text-3xl leading-relaxed text-foreground font-serif italic">
           "Every piece is considered, every interaction unhurried. Pure lines, absolute precision, and nothing unnecessary."
         </h2>
       </section>
-
       {/* Featured Products */}
       <section className="px-3 sm:px-4 md:px-8 pb-16 md:pb-20">
         <div className="flex items-end justify-between mb-6 md:mb-8 border-b border-border pb-3">
