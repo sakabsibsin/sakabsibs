@@ -1,0 +1,106 @@
+Create a large realistic product dataset for stress-testing and validating the ShopFlo project performance, infinite loading, filtering, searching, and admin workspace behavior.
+
+This is ONLY for development/testing purposes.
+
+Goal:
+Increase the database from the current ~50 products to 250+ realistic unique products.
+
+Important:
+The dataset should simulate a REAL storefront catalog with properly varied products.
+
+Requirements:
+
+1. Generate 200+ Additional Unique Products
+   Requirements:
+
+* Every product must be unique
+* Different product names
+* Different descriptions
+* Different prices
+* Different categories
+* Different product codes/SKUs
+* Different stock states
+* Different featured states
+
+Do NOT:
+
+* duplicate product names
+* duplicate product descriptions
+* duplicate product codes
+* create obvious placeholder data
+
+2. Use Unique Product Images
+   Requirements:
+
+* Use different product images for products
+* Avoid repeating the same image across many products
+* Use realistic royalty-free ecommerce/product images
+* Keep image quality visually consistent
+* Ensure images work correctly with current Cloudinary setup
+
+Important:
+
+* Avoid fake placeholder-looking images
+* Dataset should feel like a real ecommerce catalog
+
+3. Improve Existing Duplicate Data
+   Requirements:
+
+* Analyze current existing products
+* If duplicate names/images/products exist:
+
+  * replace or diversify them
+* Ensure the overall catalog feels realistic and varied
+
+4. Category Distribution
+   Distribute products naturally across categories.
+
+Example:
+
+* Rings
+* Bracelets
+* Chains
+* Watches
+* Pendants
+* Earrings
+* Accessories
+
+Keep category distribution balanced.
+
+5. Realistic Data Variation
+   Requirements:
+
+* Mixed price ranges
+* Mixed stock states
+* Different image aspect ratios if suitable
+* Different product title lengths
+* Different featured statuses
+
+This helps properly test:
+
+* UI alignment
+* infinite scrolling
+* filtering
+* searching
+* responsive layouts
+* loading performance
+
+6. Safe Bulk Import
+   Requirements:
+
+* Use a proper seed/import script
+* Avoid breaking current database structure
+* Avoid duplicate key conflicts
+* Ensure compatibility with current APIs and frontend
+
+7. Final Validation
+   After generating the dataset:
+
+* Verify infinite scrolling works correctly
+* Verify category filtering works correctly
+* Verify search works correctly
+* Verify admin product workspace remains smooth
+* Verify mobile scrolling/performance
+* Verify image loading behavior
+
+The final dataset should make the project behave like a realistic large storefront with 250+ products for proper stress-testing and UX validation.
