@@ -246,7 +246,7 @@ export default function AdminProducts() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by name, code or material…"
-            className="pl-9 pr-3 rounded-none border-border bg-background h-9 text-sm placeholder:text-muted-foreground/60"
+            className="pl-9 pr-3 rounded-none border-border bg-background h-9 text-sm placeholder:text-muted-foreground/60 border-t-[1px] border-r-[1px] border-b-[1px] border-l-[1px] pt-[5px] pb-[5px]"
           />
         </div>
 
