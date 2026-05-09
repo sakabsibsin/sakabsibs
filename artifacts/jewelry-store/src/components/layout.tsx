@@ -16,9 +16,7 @@ export function Navbar() {
         </div>
 
         {/* Center */}
-        <Link href="/" className="font-serif text-3xl tracking-widest cursor-pointer text-center flex-1 flex justify-center">
-          AURUM
-        </Link>
+        <Link href="/" className="font-serif text-3xl tracking-widest cursor-pointer text-center flex-1 flex justify-center">SAKAB</Link>
 
         {/* Right */}
         <div className="flex-1 flex items-center justify-end">
