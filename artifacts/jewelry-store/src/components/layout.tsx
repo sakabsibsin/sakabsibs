@@ -35,7 +35,7 @@ export function Footer() {
   return (
     <footer className="bg-background border-t border-border mt-8 py-8">
       <div className="container mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="font-serif text-xl tracking-widest">AURUM</div>
+        <div className="font-serif text-xl tracking-widest">SAKAB</div>
         <div className="flex gap-5 text-xs uppercase tracking-widest">
           <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Instagram</a>
           <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
