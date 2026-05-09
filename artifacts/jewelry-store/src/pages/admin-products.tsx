@@ -42,9 +42,6 @@ function useDebounce<T>(value: T, delay: number): T {
 
 // ─── Column widths ─────────────────────────────────────────────────────────────
 // Byte-for-byte identical between header [B] and every data row in [C].
-// Responsive gap: gap-2 mobile (8 px) → gap-3 sm+ (12 px).
-// Mobile fixed cols: thumb(44) + price(68) + stock(44) + acts(64) + 4×8 gap(32) = 252 px
-// → name column gets everything else.
 const COL = {
   thumb: "w-11 shrink-0",
   name:  "flex-1 min-w-0",
@@ -55,10 +52,9 @@ const COL = {
   acts:  "w-[64px] shrink-0",
 };
 
-// Shared flex row — used verbatim in both [B] header and [C] data rows
+// Shared flex row — verbatim in both [B] header and [C] data rows
 const ROW = "flex items-center gap-2 sm:gap-3 px-4";
 
-// ─── Skeleton row — one text line (matches typical product row height) ─────────
 function RowSkeleton() {
   return (
     <div className={`${ROW} py-2.5 border-b border-border/50`}>
@@ -76,32 +72,45 @@ function RowSkeleton() {
 }
 
 export default function AdminProducts() {
-  const [searchInput, setSearchInput]     = useState("");
+  const [searchInput, setSearchInput]       = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [offset, setOffset]               = useState(0);
-  const [allProducts, setAllProducts]     = useState<Product[]>([]);
-  const [hasMore, setHasMore]             = useState(true);
+  const [offset, setOffset]                 = useState(0);
+  const [allProducts, setAllProducts]       = useState<Product[]>([]);
+  const [hasMore, setHasMore]               = useState(true);
   const [canScrollLeft, setCanScrollLeft]   = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // ── filterKey — the core fix for stale-cache category switching ──────────────
+  // The accumulation effect depends on [pageData, offset]. When switching back to
+  // a previously-visited category, React Query returns the SAME cached object
+  // reference immediately. If offset is also still 0, neither dep changes, so the
+  // effect never fires, allProducts stays [], and a false empty-state is shown.
+  //
+  // Fix: include filterKey in the accumulation effect deps. filterKey increments on
+  // every category/search change, guaranteeing the accumulation effect always runs
+  // when the filter changes — regardless of whether pageData or offset changed.
+  const [filterKey, setFilterKey] = useState(0);
 
   const tabsRef     = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollRef   = useRef<HTMLDivElement>(null);
 
-  // ── Stable refs read inside observer/scroll callbacks ────────────────────────
-  // Never cause the observer to rebuild — that was the original infinite-load bug.
+  // ── Stable refs for observer/scroll callbacks — never cause them to rebuild ───
   const isFetchingRef = useRef(false);
   const hasMoreRef    = useRef(true);
-  const triggeredRef  = useRef(false);   // prevents observer + scroll double-fire
+  const triggeredRef  = useRef(false); // prevents observer+scroll double-fire
 
-  // ── Data-ready guard — fixes "Manage Products" quick-action loading bug ──────
-  // Root cause: the IntersectionObserver fires immediately on mount because the
-  // scroll container is empty (sentinel is fully visible). At that instant,
-  // isFetchingRef is still false because the React Query fetch hasn't started
-  // yet (the ref-sync useEffect runs after the observer fires). So tryLoadMore
-  // bumps offset → 30 BEFORE page 0 returns, corrupting the accumulation logic.
-  // Fix: block tryLoadMore until the first page of data has arrived.
-  const dataReadyRef = useRef(false);
+  // ── allProductsRef — replaces dataReadyRef with a single clean guard ──────────
+  // tryLoadMore checks allProductsRef.current.length > 0 instead of a separate
+  // boolean. This blocks load-more in ALL cases where the container is empty:
+  //   • initial mount (no data yet)
+  //   • mid-reset transition (old products wiped, new page 0 not yet rendered)
+  //   • genuine empty search/category (hasMore=false also blocks, belt+suspenders)
+  //
+  // The ref is written every render so it always reflects the current list length
+  // without needing to be in any effect's dependency array.
+  const allProductsRef = useRef<Product[]>([]);
+  allProductsRef.current = allProducts;
 
   const queryClient = useQueryClient();
   const { toast }   = useToast();
@@ -124,29 +133,31 @@ export default function AdminProducts() {
     query: { queryKey: getListProductsQueryKey(queryParams) },
   });
 
-  // Keep refs in sync with React state
+  // Keep refs in sync with React state each render
   useEffect(() => { isFetchingRef.current = isFetching; }, [isFetching]);
-  useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
-  // Unlock trigger guard once current fetch completes
+  useEffect(() => { hasMoreRef.current    = hasMore;    }, [hasMore]);
+  // Unlock the per-cycle trigger guard once the current fetch completes
   useEffect(() => { if (!isFetching) triggeredRef.current = false; }, [isFetching]);
 
-  // ── Load-more function (via ref — stable, no deps, safe for empty-dep effects) ─
+  // ── Load-more (stable ref-wrapper — safe inside empty-dep effects) ────────────
   const tryLoadMoreRef = useRef(() => {});
   tryLoadMoreRef.current = () => {
     if (
-      !dataReadyRef.current ||   // wait for first page before triggering more
-      isFetchingRef.current  ||  // already fetching
-      !hasMoreRef.current    ||  // no more pages
-      triggeredRef.current       // already triggered for this fetch cycle
+      allProductsRef.current.length === 0 || // page 0 not yet rendered (initial / reset)
+      isFetchingRef.current               || // fetch already in flight
+      !hasMoreRef.current                 || // no more pages
+      triggeredRef.current                   // already triggered this fetch cycle
     ) return;
     triggeredRef.current = true;
     setOffset((prev) => prev + PAGE_SIZE);
   };
 
   // ── Accumulate pages ──────────────────────────────────────────────────────────
+  // filterKey in deps is essential: when returning to a cached category, pageData
+  // and offset may both be unchanged (same reference, same 0), so without filterKey
+  // this effect would silently skip re-populating allProducts after a reset.
   useEffect(() => {
     if (!pageData) return;
-    dataReadyRef.current = true;           // ← mark data as ready on first arrival
     const incoming = pageData.products;
     if (offset === 0) {
       setAllProducts(incoming);
@@ -157,12 +168,15 @@ export default function AdminProducts() {
       });
     }
     setHasMore(pageData.hasMore);
-  }, [pageData, offset]);
+  }, [pageData, offset, filterKey]); // ← filterKey ensures this always fires on filter change
 
   // ── Reset on filter change ────────────────────────────────────────────────────
+  // Sets filterKey so the accumulation effect fires even for cached responses.
+  // Sets allProducts=[] immediately so allProductsRef.current.length===0 blocks
+  // load-more until page 0 of the new filter is rendered.
   useEffect(() => {
-    dataReadyRef.current  = false;   // ← block load-more until new page 0 arrives
-    triggeredRef.current  = false;
+    triggeredRef.current = false;
+    setFilterKey((k) => k + 1); // ← invalidates stale cache hit in accumulation
     setOffset(0);
     setAllProducts([]);
     setHasMore(true);
@@ -170,8 +184,6 @@ export default function AdminProducts() {
   }, [search, activeCategory]);
 
   // ── IntersectionObserver — set up ONCE, never recreated ──────────────────────
-  // Reading mutable state from refs (not closure values) so this effect stays
-  // stable with empty deps. Sentinel visibility triggers tryLoadMoreRef.current().
   useEffect(() => {
     const sentinel  = sentinelRef.current;
     const container = scrollRef.current;
@@ -182,7 +194,7 @@ export default function AdminProducts() {
     );
     io.observe(sentinel);
     return () => io.disconnect();
-  }, []); // intentionally empty — never torn down during fetch cycles
+  }, []); // intentionally empty — reads mutable state from refs
 
   // ── Scroll fallback — catches sentinel-already-visible edge cases ─────────────
   useEffect(() => {
@@ -253,25 +265,30 @@ export default function AdminProducts() {
   const allCategories = ["All", ...(categories?.map((c) => c.name) ?? [])];
   const total = pageData?.total;
 
+  // Empty state: only show after the filter response has settled
+  // isLoading = true on initial mount; isFetching = true whenever a fetch is in flight.
+  // We only show "empty" when: not loading, not fetching, and allProducts is still [].
+  const showEmpty = !isLoading && !isFetching && allProducts.length === 0;
+
   return (
     <AdminLayout fullHeight>
 
       {/*
-       * ══════════════════════════════════════════════════════════════════════
-       *  WORKSPACE ARCHITECTURE
-       *  AdminLayout(fullHeight) → h-[100dvh] overflow-hidden flex flex-col
-       *    header  shrink-0 h-14
-       *    main    flex-1 overflow-hidden flex flex-col
-       *      [A] Toolbar    shrink-0  — title / search / category tabs
-       *      [B] Col header shrink-0  — never scrolls
-       *      [C] Row list   flex-1 min-h-0 overflow-y-auto  — ONLY scroll zone
+       * ══════════════════════════════════════════════════════════════════
+       *  WORKSPACE ARCHITECTURE (AdminLayout fullHeight):
+       *    h-[100dvh] overflow-hidden flex flex-col
+       *      header   shrink-0  h-14
+       *      main     flex-1 overflow-hidden flex flex-col
+       *        [A] Toolbar    shrink-0
+       *        [B] Col header shrink-0  ← never scrolls
+       *        [C] Row list   flex-1 min-h-0 overflow-y-auto ← only scroll zone
        *
        *  No <table>. No sticky. No z-index.
-       *  [B] header and [C] rows share the exact same ROW class + COL widths.
-       * ══════════════════════════════════════════════════════════════════════
+       *  [B] and [C] share exact ROW class + COL widths → pixel-perfect alignment.
+       * ══════════════════════════════════════════════════════════════════
        */}
 
-      {/* ── [A] TOOLBAR ────────────────────────────────────────────────────── */}
+      {/* ── [A] TOOLBAR ────────────────────────────────────────────────── */}
       <div className="shrink-0 bg-background border-b border-border px-4 pt-3 pb-0">
 
         {/* Title + count + Add */}
@@ -338,8 +355,7 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* ── [B] COLUMN HEADER — shrink-0, lives above scroll zone ────────── */}
-      {/* Must use identical ROW class and COL widths as every data row below  */}
+      {/* ── [B] COLUMN HEADER ─────────────────────────────────────────── */}
       <div className="shrink-0 bg-background border-b border-border">
         <div className={`${ROW} py-2 text-[10px] uppercase tracking-widest text-muted-foreground font-medium select-none`}>
           <div className={COL.thumb}>Img</div>
@@ -352,18 +368,23 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* ── [C] SCROLLABLE ROW LIST — the ONLY element that scrolls ───────── */}
+      {/* ── [C] SCROLLABLE ROW LIST ───────────────────────────────────── */}
       <div
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
       >
-        {/* Initial load skeletons */}
-        {isLoading && offset === 0 &&
+        {/* Initial load skeletons (only on first mount, not on category switch) */}
+        {isLoading && offset === 0 && allProducts.length === 0 &&
           Array.from({ length: 12 }).map((_, i) => <RowSkeleton key={i} />)
         }
 
-        {/* Empty state */}
-        {!isLoading && allProducts.length === 0 && !isFetching && (
+        {/* Category-switch transition: show skeletons while fetching new filter */}
+        {isFetching && !isLoading && allProducts.length === 0 &&
+          Array.from({ length: 8 }).map((_, i) => <RowSkeleton key={`tr-${i}`} />)
+        }
+
+        {/* Empty state — only when fetch fully settled and truly no results */}
+        {showEmpty && (
           <div className="flex items-center justify-center h-48">
             <p className="font-serif italic text-sm text-muted-foreground text-center px-6">
               {search || activeCategory !== "All"
@@ -373,7 +394,7 @@ export default function AdminProducts() {
           </div>
         )}
 
-        {/* ── Product rows ────────────────────────────────────────────────── */}
+        {/* ── Product rows ──────────────────────────────────────────── */}
         {allProducts.map((product) => (
           <div
             key={product.id}
@@ -396,7 +417,7 @@ export default function AdminProducts() {
               </div>
             </div>
 
-            {/* Name — slightly tighter size for compact admin density */}
+            {/* Name */}
             <div className={COL.name}>
               <p className="text-[13px] font-medium leading-snug line-clamp-2">
                 {product.name}
@@ -423,7 +444,7 @@ export default function AdminProducts() {
               ₹{product.price.toLocaleString("en-IN")}
             </div>
 
-            {/* Stock toggle — explicit flex centers the Switch within the column */}
+            {/* Stock toggle */}
             <div className={`${COL.stock} flex items-center`}>
               <Switch
                 checked={product.inStock}
@@ -433,7 +454,7 @@ export default function AdminProducts() {
               />
             </div>
 
-            {/* Actions — mirrors header's justify-end alignment */}
+            {/* Actions */}
             <div className={`${COL.acts} flex items-center justify-end gap-1`}>
               <Button
                 variant="outline"
@@ -484,7 +505,7 @@ export default function AdminProducts() {
         {/* IntersectionObserver sentinel */}
         <div ref={sentinelRef} className="h-px" aria-hidden />
 
-        {/* End-of-list marker */}
+        {/* End-of-list */}
         {!hasMore && allProducts.length > PAGE_SIZE && (
           <p className="text-center py-5 text-[10px] uppercase tracking-widest text-muted-foreground border-t border-border/50">
             All {total} products loaded
