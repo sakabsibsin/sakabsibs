@@ -286,9 +286,13 @@ export const ProductDetailPage = () => {
                     onClick={() => selectVariant(i)}
                     className={cn(
                       'relative flex-shrink-0 h-9 px-4 border text-xs font-light whitespace-nowrap overflow-hidden transition-colors duration-200',
-                      selectedVariant === i
-                        ? 'border-foreground text-foreground'
-                        : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
+                      v.inStock === false
+                        ? selectedVariant === i
+                          ? 'border-red-400 text-red-500'
+                          : 'border-red-200 text-red-400 hover:border-red-400 hover:text-red-500'
+                        : selectedVariant === i
+                          ? 'border-foreground text-foreground'
+                          : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
                     )}
                   >
                     {selectedVariant === i && (
