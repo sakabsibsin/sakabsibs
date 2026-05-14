@@ -246,7 +246,9 @@ export const ProductsPage = () => {
                       />
                       {product.variants?.length > 0 && (
                         <span className="text-[9px] text-muted-foreground/40 tabular-nums leading-none">
-                          {product.variants.filter((v) => v.inStock !== false).length}/{product.variants.length}
+                          {!product.inStock
+                            ? 'offline'
+                            : `${product.variants.filter((v) => v.inStock !== false).length}/${product.variants.length}`}
                         </span>
                       )}
                     </div>

@@ -514,7 +514,11 @@ export const ProductForm = ({ productId }) => {
               <div className="flex items-center justify-between border border-border px-4 py-3">
                 <div>
                   <p className="text-sm font-medium">In Stock</p>
-                  <p className="text-xs text-muted-foreground">Product is available to order</p>
+                  <p className="text-xs text-muted-foreground">
+                    {allVariants.length > 0
+                      ? 'Master switch — turn off to take the whole product offline'
+                      : 'Product is available to order'}
+                  </p>
                 </div>
                 <Switch checked={inStock} onCheckedChange={(v) => setValue('inStock', v)} />
               </div>
