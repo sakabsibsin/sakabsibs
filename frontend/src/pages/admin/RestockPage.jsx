@@ -14,20 +14,18 @@ const getTotalDemand = (product) => {
   return (product.demandCount ?? 0) + vd;
 };
 
-/* ── Demand pill ──────────────────────────────────── */
+/* ── Demand count ─────────────────────────────────── */
 const DemandCount = ({ count, large = false }) =>
   count > 0 ? (
     <div className="text-right shrink-0">
-      <p className={cn('font-serif leading-none tabular-nums', large ? 'text-2xl' : 'text-lg')}>
+      <p className={cn('font-serif leading-none tabular-nums text-foreground', large ? 'text-2xl' : 'text-xl')}>
         {count}
       </p>
-      <p className="text-[9px] uppercase tracking-wider text-muted-foreground/40 mt-0.5">
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground/70 mt-0.5">
         {count === 1 ? 'request' : 'requests'}
       </p>
     </div>
-  ) : (
-    <span className="text-[10px] text-muted-foreground/25 shrink-0">—</span>
-  );
+  ) : null;
 
 /* ── Restock button ───────────────────────────────── */
 const RestockBtn = ({ onClick, disabled, hasDemand, faded, label = 'Restock' }) => (
@@ -35,12 +33,12 @@ const RestockBtn = ({ onClick, disabled, hasDemand, faded, label = 'Restock' }) 
     onClick={onClick}
     disabled={disabled}
     className={cn(
-      'shrink-0 h-8 px-4 text-[10px] uppercase tracking-wider font-medium transition-all duration-200 disabled:opacity-35',
+      'shrink-0 h-8 px-4 text-[10px] uppercase tracking-wider font-semibold transition-all duration-200 disabled:opacity-40',
       faded
-        ? 'border border-border/35 text-muted-foreground/35 hover:border-foreground/25 hover:text-foreground/70 hover:bg-muted/20'
+        ? 'border border-border text-foreground/60 hover:border-foreground/50 hover:text-foreground hover:bg-muted/30'
         : hasDemand
           ? 'bg-foreground text-background hover:bg-foreground/85 active:scale-[0.97]'
-          : 'border border-border text-foreground/55 hover:border-foreground/40 hover:bg-muted/30'
+          : 'border border-border text-foreground/70 hover:border-foreground hover:bg-muted/30'
     )}
   >
     {label}
@@ -112,11 +110,11 @@ export const RestockPage = () => {
         key={product.id}
         className={cn(
           'border bg-card overflow-hidden transition-all duration-200',
-          faded ? 'border-border/30 opacity-55' : 'border-border hover:border-foreground/20'
+          faded ? 'border-border/60' : 'border-border hover:border-foreground/30'
         )}
       >
         {/* ── Header row ─────────────────────────── */}
-        <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className={cn('flex items-center gap-3 px-4 py-3.5', faded && 'opacity-70')}>
 
           {/* Thumbnail */}
           <div className="h-12 w-12 shrink-0 overflow-hidden" style={{ background: 'hsl(34,40%,94%)' }}>
@@ -128,21 +126,21 @@ export const RestockPage = () => {
 
           {/* Name + meta */}
           <div className="flex-1 min-w-0">
-            <p className={cn('text-[13px] font-medium leading-snug truncate', faded && 'text-foreground/50')}>
+            <p className="text-[13px] font-semibold leading-snug truncate text-foreground">
               {product.name}
             </p>
             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 mt-0.5">
-              <span className="text-[10px] text-muted-foreground/45">{product.category}</span>
+              <span className="text-[11px] text-muted-foreground/70">{product.category}</span>
               {product.productCode && (
                 <>
-                  <span className="text-muted-foreground/20 text-[10px]">·</span>
-                  <span className="text-[10px] font-mono text-muted-foreground/35">{product.productCode}</span>
+                  <span className="text-muted-foreground/50 text-[11px]">·</span>
+                  <span className="text-[11px] font-mono text-muted-foreground/65">{product.productCode}</span>
                 </>
               )}
               {hasVariants && (
                 <>
-                  <span className="text-muted-foreground/20 text-[10px]">·</span>
-                  <span className="text-[10px] text-muted-foreground/40">
+                  <span className="text-muted-foreground/50 text-[11px]">·</span>
+                  <span className={cn('text-[11px] font-medium', oosVariants.length > 0 ? 'text-red-600/80' : 'text-muted-foreground/65')}>
                     {oosVariants.length} of {product.variants.length} variants out of stock
                   </span>
                 </>
@@ -152,7 +150,6 @@ export const RestockPage = () => {
 
           {/* Actions */}
           {hasVariants ? (
-            /* Variant product ── chevron expand */
             <div className="flex items-center gap-2.5 shrink-0">
               {totalDemand > 0 && <DemandCount count={totalDemand} large />}
               <button
@@ -161,8 +158,8 @@ export const RestockPage = () => {
                 className={cn(
                   'h-8 w-8 flex items-center justify-center border transition-all duration-200',
                   isOpen
-                    ? 'border-foreground/30 bg-muted/30 text-foreground'
-                    : 'border-border text-muted-foreground/40 hover:border-foreground/25 hover:text-foreground hover:bg-muted/20'
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border text-foreground/60 hover:border-foreground hover:text-foreground hover:bg-muted/30'
                 )}
               >
                 <motion.div
@@ -174,9 +171,8 @@ export const RestockPage = () => {
               </button>
             </div>
           ) : masterOos ? (
-            /* Simple product ── inline restock */
             <div className="flex items-center gap-3 shrink-0">
-              {!faded && <DemandCount count={totalDemand} large />}
+              <DemandCount count={totalDemand} large />
               <RestockBtn
                 onClick={() => handleRestockProduct(product)}
                 disabled={toggleStock.isPending}
@@ -198,14 +194,14 @@ export const RestockPage = () => {
                 transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
                 style={{ overflow: 'hidden' }}
               >
-                <div className="border-t border-border/40">
+                <div className="border-t border-border">
 
                   {/* Master offline banner */}
                   {!product.inStock && (
-                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50/60 border-b border-amber-100">
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border-b border-amber-200">
                       <div className="flex items-center gap-2 min-w-0">
-                        <AlertCircle className="h-3.5 w-3.5 text-amber-500/70 shrink-0" />
-                        <span className="text-[11px] text-amber-700/70 font-light truncate">
+                        <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span className="text-[12px] text-amber-800 font-medium truncate">
                           Entire product is offline — master switch is off
                         </span>
                       </div>
@@ -220,69 +216,68 @@ export const RestockPage = () => {
                   )}
 
                   {/* Column headers */}
-                  <div className="flex items-center gap-3 pl-16 pr-4 py-1.5 border-b border-border/20 bg-muted/10">
-                    <span className="w-2 shrink-0" />
-                    <span className="flex-1 text-[9px] uppercase tracking-[0.2em] text-muted-foreground/35 font-medium">Variant</span>
-                    <span className="w-24 text-center text-[9px] uppercase tracking-[0.2em] text-muted-foreground/35 font-medium shrink-0">Status</span>
-                    <span className="w-20 text-right text-[9px] uppercase tracking-[0.2em] text-muted-foreground/35 font-medium shrink-0">Interest</span>
+                  <div className="flex items-center gap-3 pl-4 pr-4 py-2 border-b border-border bg-muted/30">
+                    <span className="w-48 text-[10px] uppercase tracking-[0.18em] text-foreground/60 font-semibold">Variant</span>
+                    <span className="w-28 text-center text-[10px] uppercase tracking-[0.18em] text-foreground/60 font-semibold shrink-0">Status</span>
+                    <span className="w-20 text-right text-[10px] uppercase tracking-[0.18em] text-foreground/60 font-semibold shrink-0">Interest</span>
                     <span className="w-20 shrink-0" />
                   </div>
 
-                  {/* ALL variant rows — in-stock and OOS */}
-                  <div className="divide-y divide-border/10">
+                  {/* ALL variant rows */}
+                  <div className="divide-y divide-border/40">
                     {product.variants.map((variant) => {
-                      const isOos   = variant.inStock === false;
-                      const demand  = variant.demandCount ?? 0;
+                      const isOos  = variant.inStock === false;
+                      const demand = variant.demandCount ?? 0;
                       return (
                         <div
                           key={variant.id}
                           className={cn(
-                            'flex items-center gap-3 pl-16 pr-4 py-3 transition-colors duration-150',
-                            isOos ? 'hover:bg-red-50/30' : 'hover:bg-muted/5'
+                            'flex items-center gap-3 pl-4 pr-4 py-3 transition-colors duration-150',
+                            isOos ? 'bg-red-50/40 hover:bg-red-50/70' : 'hover:bg-muted/20'
                           )}
                         >
                           {/* Status dot */}
-                          <span className={cn(
-                            'h-2 w-2 rounded-full shrink-0',
-                            isOos ? 'bg-red-400' : 'bg-green-500/50'
-                          )} />
-
-                          {/* Variant color name */}
-                          <span className={cn(
-                            'flex-1 text-[13px] font-light min-w-0 truncate capitalize',
-                            isOos ? 'text-foreground/80' : 'text-foreground/40'
-                          )}>
-                            {variant.color}
-                          </span>
+                          <div className="w-48 flex items-center gap-2.5 min-w-0">
+                            <span className={cn(
+                              'h-2.5 w-2.5 rounded-full shrink-0',
+                              isOos ? 'bg-red-500' : 'bg-green-500/70'
+                            )} />
+                            <span className={cn(
+                              'text-[13px] font-medium capitalize truncate',
+                              isOos ? 'text-foreground' : 'text-foreground/55'
+                            )}>
+                              {variant.color}
+                            </span>
+                          </div>
 
                           {/* Stock status badge */}
-                          <div className="w-24 flex justify-center shrink-0">
+                          <div className="w-28 flex justify-center shrink-0">
                             {isOos ? (
-                              <span className="inline-flex items-center gap-1 text-[9px] tracking-wider uppercase font-medium text-red-500/90 bg-red-50 border border-red-200/70 px-2 py-0.5 leading-none">
+                              <span className="inline-flex items-center text-[10px] tracking-wide uppercase font-bold text-red-700 bg-red-100 border border-red-300 px-2.5 py-1 leading-none">
                                 Out of Stock
                               </span>
                             ) : (
-                              <span className="text-[9px] tracking-wider uppercase text-green-700/40 font-medium">
+                              <span className="inline-flex items-center text-[10px] tracking-wide uppercase font-medium text-green-700/80 bg-green-50 border border-green-200 px-2.5 py-1 leading-none">
                                 In Stock
                               </span>
                             )}
                           </div>
 
-                          {/* Demand count — always shown */}
+                          {/* Demand count */}
                           <div className="w-20 text-right shrink-0">
                             {demand > 0 ? (
-                              <div>
-                                <span className="text-base font-serif leading-none">{demand}</span>
-                                <span className="text-[9px] text-muted-foreground/40 ml-1">
+                              <div className="inline-flex items-baseline gap-1 justify-end">
+                                <span className="text-lg font-serif text-foreground leading-none">{demand}</span>
+                                <span className="text-[10px] text-muted-foreground/70">
                                   {demand === 1 ? 'req.' : 'req.'}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[10px] text-muted-foreground/25">—</span>
+                              <span className="text-sm text-muted-foreground/45">—</span>
                             )}
                           </div>
 
-                          {/* Action — Restock only for OOS */}
+                          {/* Action */}
                           <div className="w-20 flex justify-end shrink-0">
                             {isOos ? (
                               <RestockBtn
@@ -292,7 +287,7 @@ export const RestockPage = () => {
                                 faded={false}
                               />
                             ) : (
-                              <span className="text-[9px] text-muted-foreground/20">—</span>
+                              <span className="text-sm text-muted-foreground/40">—</span>
                             )}
                           </div>
                         </div>
@@ -315,7 +310,7 @@ export const RestockPage = () => {
       {/* Back */}
       <button
         onClick={() => navigate(-1)}
-        className="group inline-flex items-center gap-2 text-[10px] tracking-[0.2em] uppercase font-light text-muted-foreground/40 hover:text-foreground transition-colors mb-8"
+        className="group inline-flex items-center gap-2 text-[10px] tracking-[0.2em] uppercase font-medium text-muted-foreground/65 hover:text-foreground transition-colors mb-8"
       >
         <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-0.5" />
         Dashboard
@@ -324,7 +319,7 @@ export const RestockPage = () => {
       {/* Title */}
       <div className="mb-8">
         <h1 className="text-4xl font-serif font-light tracking-wide">Restock Demand</h1>
-        <p className="text-xs text-muted-foreground/45 mt-1.5 font-light tracking-wide">
+        <p className="text-sm text-muted-foreground/70 mt-1.5 font-light">
           Customer interest signals for out-of-stock items
         </p>
       </div>
@@ -342,7 +337,7 @@ export const RestockPage = () => {
               className={cn('flex flex-col items-center justify-center py-5', i < 2 && 'border-r border-border')}
             >
               <p className="text-3xl font-serif mb-1">{value}</p>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/40">{label}</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/65 font-medium">{label}</p>
             </div>
           ))}
         </div>
@@ -367,9 +362,9 @@ export const RestockPage = () => {
       {/* Empty */}
       {!isLoading && allProducts.length === 0 && (
         <div className="border border-border bg-card py-24 text-center">
-          <CheckCircle2 className="h-10 w-10 text-muted-foreground/15 mx-auto mb-5" />
-          <p className="font-serif text-2xl font-light text-muted-foreground/40 mb-2">All clear</p>
-          <p className="text-xs text-muted-foreground/30 tracking-wide">Every product is currently in stock.</p>
+          <CheckCircle2 className="h-10 w-10 text-muted-foreground/30 mx-auto mb-5" />
+          <p className="font-serif text-2xl font-light text-muted-foreground/60 mb-2">All clear</p>
+          <p className="text-sm text-muted-foreground/55 tracking-wide">Every product is currently in stock.</p>
         </div>
       )}
 
@@ -377,11 +372,11 @@ export const RestockPage = () => {
       {!isLoading && withDemand.length > 0 && (
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-4">
-            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 shrink-0">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/70 font-semibold shrink-0">
               Most Wanted
             </p>
-            <div className="flex-1 h-px bg-border/40" />
-            <p className="text-[10px] text-muted-foreground/30 shrink-0">Prioritise these first</p>
+            <div className="flex-1 h-px bg-border" />
+            <p className="text-[11px] text-muted-foreground/60 shrink-0">Prioritise these first</p>
           </div>
           <div className="space-y-2">
             {withDemand.map(p => renderCard(p, false))}
@@ -393,11 +388,11 @@ export const RestockPage = () => {
       {!isLoading && noDemand.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-3">
-            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/30 shrink-0">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/60 font-semibold shrink-0">
               Out of Stock · No Requests
             </p>
-            <div className="flex-1 h-px bg-border/25" />
-            <span className="text-[10px] text-muted-foreground/25 shrink-0 tabular-nums">
+            <div className="flex-1 h-px bg-border/60" />
+            <span className="text-[11px] text-muted-foreground/60 shrink-0 tabular-nums font-medium">
               {noDemand.length}
             </span>
           </div>
