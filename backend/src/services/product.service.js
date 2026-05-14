@@ -78,15 +78,25 @@ export const updateProduct = async (id, body) => {
 export const deleteProduct = (id) => Product.findByIdAndDelete(id);
 
 export const toggleStock = (id, inStock) =>
-  Product.findByIdAndUpdate(id, { inStock }, { new: true });
+  Product.findByIdAndUpdate(
+    id,
+    inStock
+      ? { inStock: true,  demandCount: 0, 'variants.$[].demandCount': 0 }
+      : { inStock: false },
+    { new: true }
+  );
 
 export const registerDemand = (id) =>
   Product.findByIdAndUpdate(id, { $inc: { demandCount: 1 } }, { new: true });
 
 export const toggleVariantStock = async (productId, variantId, inStock) => {
+  const updateFields = inStock
+    ? { 'variants.$.inStock': true, 'variants.$.demandCount': 0 }
+    : { 'variants.$.inStock': false };
+
   const product = await Product.findOneAndUpdate(
     { _id: productId, 'variants._id': variantId },
-    { $set: { 'variants.$.inStock': inStock } },
+    { $set: updateFields },
     { new: true }
   );
   if (!product) return null;

@@ -69,18 +69,35 @@ export const ProductDetailPage = () => {
     setActiveImgIndex(0);
   }, [product?.id]);
 
-  // Read localStorage demand state — scoped to variant when applicable
+  // Read localStorage demand state — scoped to variant when applicable.
+  // If demandCount is 0 the product was restocked and demand was reset, so
+  // clear any stale "already pressed" entry so the button shows again.
   useEffect(() => {
     if (!product?.id) return;
     const pvariants = product.variants ?? [];
+
     if (pvariants.length > 0 && selectedVariant !== null) {
-      const variantId = pvariants[selectedVariant]?.id;
+      const variant = pvariants[selectedVariant];
+      const variantId = variant?.id;
       if (variantId) {
-        setHasDemanded(!!localStorage.getItem(`demanded_${product.id}_${variantId}`));
+        const key = `demanded_${product.id}_${variantId}`;
+        if (localStorage.getItem(key) && (variant?.demandCount ?? 0) === 0) {
+          localStorage.removeItem(key);
+          setHasDemanded(false);
+        } else {
+          setHasDemanded(!!localStorage.getItem(key));
+        }
         return;
       }
     }
-    setHasDemanded(!!localStorage.getItem(`demanded_${product.id}`));
+
+    const key = `demanded_${product.id}`;
+    if (localStorage.getItem(key) && (product.demandCount ?? 0) === 0) {
+      localStorage.removeItem(key);
+      setHasDemanded(false);
+    } else {
+      setHasDemanded(!!localStorage.getItem(key));
+    }
   }, [product?.id, selectedVariant]);
 
   const handleDemand = () => {
