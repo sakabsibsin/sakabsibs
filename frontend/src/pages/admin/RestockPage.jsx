@@ -1,182 +1,275 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronDown, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useProducts, useToggleStock, useToggleVariantStock, productKeys } from '@/features/products/hooks';
 import { getProductThumbnail, cn } from '@/lib/utils';
 
+/* ── helpers ──────────────────────────────────────── */
 const getTotalDemand = (product) => {
-  const variantDemand = (product.variants ?? []).reduce((s, v) => s + (v.demandCount ?? 0), 0);
-  return (product.demandCount ?? 0) + variantDemand;
+  const vd = (product.variants ?? []).reduce((s, v) => s + (v.demandCount ?? 0), 0);
+  return (product.demandCount ?? 0) + vd;
 };
 
+/* ── Demand pill ──────────────────────────────────── */
+const DemandCount = ({ count, large = false }) =>
+  count > 0 ? (
+    <div className="text-right shrink-0">
+      <p className={cn('font-serif leading-none tabular-nums', large ? 'text-2xl' : 'text-lg')}>
+        {count}
+      </p>
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground/40 mt-0.5">
+        {count === 1 ? 'request' : 'requests'}
+      </p>
+    </div>
+  ) : (
+    <span className="text-[10px] text-muted-foreground/25 shrink-0">—</span>
+  );
+
+/* ── Restock button ───────────────────────────────── */
+const RestockBtn = ({ onClick, disabled, hasDemand, faded, label = 'Restock' }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={cn(
+      'shrink-0 h-8 px-4 text-[10px] uppercase tracking-wider font-medium transition-all duration-200 disabled:opacity-35',
+      faded
+        ? 'border border-border/35 text-muted-foreground/35 hover:border-foreground/25 hover:text-foreground/70 hover:bg-muted/20'
+        : hasDemand
+          ? 'bg-foreground text-background hover:bg-foreground/85 active:scale-[0.97]'
+          : 'border border-border text-foreground/55 hover:border-foreground/40 hover:bg-muted/30'
+    )}
+  >
+    {label}
+  </button>
+);
+
+/* ── Page ─────────────────────────────────────────── */
 export const RestockPage = () => {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
+  const navigate   = useNavigate();
+  const qc         = useQueryClient();
   const { data, isLoading } = useProducts({ anyOutOfStock: true, limit: 200 });
-  const toggleStock = useToggleStock();
+  const toggleStock        = useToggleStock();
   const toggleVariantStock = useToggleVariantStock();
 
-  const allProducts = [...(data?.products ?? [])].sort(
-    (a, b) => getTotalDemand(b) - getTotalDemand(a)
-  );
-  const withDemand = allProducts.filter((p) => getTotalDemand(p) > 0);
-  const noDemand   = allProducts.filter((p) => getTotalDemand(p) === 0);
+  const [expanded, setExpanded] = useState(new Set());
+  const toggle = (id) => setExpanded(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
 
-  // Stat strip calculations
-  const totalOosItems = allProducts.reduce((count, p) => {
-    if (!p.variants?.length) return count + (!p.inStock ? 1 : 0);
-    return count + p.variants.filter((v) => v.inStock === false).length +
-      (!p.inStock && !p.variants.some((v) => v.inStock === false) ? 1 : 0);
+  /* ── derived data ───────────────────────────────── */
+  const allProducts   = [...(data?.products ?? [])].sort((a, b) => getTotalDemand(b) - getTotalDemand(a));
+  const withDemand    = allProducts.filter(p => getTotalDemand(p) > 0);
+  const noDemand      = allProducts.filter(p => getTotalDemand(p) === 0);
+
+  const totalOosItems = allProducts.reduce((n, p) => {
+    if (!p.variants?.length) return n + (!p.inStock ? 1 : 0);
+    return n + p.variants.filter(v => v.inStock === false).length
+             + (!p.inStock && !p.variants.some(v => v.inStock === false) ? 1 : 0);
   }, 0);
-  const totalWithDemand = allProducts.reduce((count, p) => {
-    if (!p.variants?.length) return count + ((p.demandCount ?? 0) > 0 ? 1 : 0);
-    return count + p.variants.filter((v) => v.inStock === false && (v.demandCount ?? 0) > 0).length;
+  const totalWithDemand = allProducts.reduce((n, p) => {
+    if (!p.variants?.length) return n + ((p.demandCount ?? 0) > 0 ? 1 : 0);
+    return n + p.variants.filter(v => v.inStock === false && (v.demandCount ?? 0) > 0).length;
   }, 0);
-  const totalSignals = allProducts.reduce((sum, p) => {
-    const variantDemand = (p.variants ?? []).reduce((s, v) => s + (v.demandCount ?? 0), 0);
-    return sum + (p.demandCount ?? 0) + variantDemand;
-  }, 0);
+  const totalSignals = allProducts.reduce((s, p) => s + getTotalDemand(p), 0);
 
-  const handleRestockProduct = (product) => {
-    toggleStock.mutate(
-      { id: product.id, inStock: true },
-      {
-        onSuccess: () => {
-          toast.success(`"${product.name}" is back in stock.`);
-          qc.invalidateQueries({ queryKey: productKeys.stats() });
-          qc.invalidateQueries({ queryKey: productKeys.lists() });
-        },
-        onError: () => toast.error('Failed to update stock.'),
-      }
-    );
-  };
+  /* ── handlers ───────────────────────────────────── */
+  const handleRestockProduct = (product) =>
+    toggleStock.mutate({ id: product.id, inStock: true }, {
+      onSuccess: () => {
+        toast.success(`"${product.name}" is back in stock.`);
+        qc.invalidateQueries({ queryKey: productKeys.stats() });
+        qc.invalidateQueries({ queryKey: productKeys.lists() });
+      },
+      onError: () => toast.error('Failed to update stock.'),
+    });
 
-  const handleRestockVariant = (product, variant) => {
-    toggleVariantStock.mutate(
-      { productId: product.id, variantId: variant.id, inStock: true },
-      {
-        onSuccess: () => {
-          toast.success(`"${product.name} — ${variant.color}" is back in stock.`);
-          qc.invalidateQueries({ queryKey: productKeys.lists() });
-        },
-        onError: () => toast.error('Failed to update variant stock.'),
-      }
-    );
-  };
+  const handleRestockVariant = (product, variant) =>
+    toggleVariantStock.mutate({ productId: product.id, variantId: variant.id, inStock: true }, {
+      onSuccess: () => {
+        toast.success(`"${variant.color}" is back in stock.`);
+        qc.invalidateQueries({ queryKey: productKeys.lists() });
+      },
+      onError: () => toast.error('Failed to update variant stock.'),
+    });
 
-  const renderProductCard = (product, faded = false) => {
-    const thumb = getProductThumbnail(product);
-    const hasVariants = (product.variants ?? []).length > 0;
-    const oosVariants = hasVariants
-      ? product.variants.filter((v) => v.inStock === false)
-      : [];
-    const productLevelOos = !product.inStock && (!hasVariants || oosVariants.length === 0);
+  /* ── product card ───────────────────────────────── */
+  const renderCard = (product, faded = false) => {
+    const thumb        = getProductThumbnail(product);
+    const hasVariants  = product.variants?.length > 0;
+    const oosVariants  = hasVariants ? product.variants.filter(v => v.inStock === false) : [];
+    const masterOos    = !product.inStock && (!hasVariants || oosVariants.length === 0);
+    const totalDemand  = getTotalDemand(product);
+    const isOpen       = expanded.has(product.id);
 
     return (
       <div
         key={product.id}
         className={cn(
-          'border bg-card',
-          faded ? 'border-border/40 opacity-60' : 'border-border'
+          'border bg-card overflow-hidden transition-all duration-200',
+          faded ? 'border-border/30 opacity-55' : 'border-border hover:border-foreground/20'
         )}
       >
-        {/* Product header row */}
-        <div className={cn(
-          'flex items-center gap-4 px-4 py-3.5',
-          hasVariants && 'border-b border-border/30'
-        )}>
-          <div className="h-11 w-11 shrink-0 overflow-hidden" style={{ background: 'hsl(34,40%,94%)' }}>
-            {thumb ? (
-              <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
-            ) : (
-              <div className="w-full h-full bg-muted/50" />
-            )}
+        {/* ── Header row ─────────────────────────── */}
+        <div className="flex items-center gap-3 px-4 py-3.5">
+
+          {/* Thumbnail */}
+          <div className="h-12 w-12 shrink-0 overflow-hidden" style={{ background: 'hsl(34,40%,94%)' }}>
+            {thumb
+              ? <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+              : <div className="w-full h-full" />
+            }
           </div>
+
+          {/* Name + meta */}
           <div className="flex-1 min-w-0">
-            <p className={cn('text-sm font-medium truncate', faded && 'text-foreground/50')}>
+            <p className={cn('text-[13px] font-medium leading-snug truncate', faded && 'text-foreground/50')}>
               {product.name}
             </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <p className="text-[10px] text-muted-foreground/45">{product.category}</p>
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 mt-0.5">
+              <span className="text-[10px] text-muted-foreground/45">{product.category}</span>
               {product.productCode && (
                 <>
-                  <span className="text-muted-foreground/25 text-[10px]">·</span>
-                  <p className="text-[10px] font-mono text-muted-foreground/40">{product.productCode}</p>
+                  <span className="text-muted-foreground/20 text-[10px]">·</span>
+                  <span className="text-[10px] font-mono text-muted-foreground/35">{product.productCode}</span>
+                </>
+              )}
+              {hasVariants && (
+                <>
+                  <span className="text-muted-foreground/20 text-[10px]">·</span>
+                  <span className="text-[10px] text-muted-foreground/40">
+                    {oosVariants.length} of {product.variants.length} variants out of stock
+                  </span>
                 </>
               )}
             </div>
           </div>
 
-          {/* Product-level restock button — only when master switch is off with no OOS variants */}
-          {productLevelOos && (
-            <div className="flex items-center gap-3 shrink-0">
-              {!faded && (
-                <div className="text-center w-14">
-                  <p className="text-xl font-serif leading-none">{product.demandCount ?? 0}</p>
-                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground/35 mt-1">
-                    {(product.demandCount ?? 0) === 1 ? 'request' : 'requests'}
-                  </p>
-                </div>
-              )}
+          {/* Actions */}
+          {hasVariants ? (
+            /* Variant product ── chevron expand */
+            <div className="flex items-center gap-2.5 shrink-0">
+              {!faded && totalDemand > 0 && <DemandCount count={totalDemand} large />}
               <button
-                onClick={() => handleRestockProduct(product)}
-                disabled={toggleStock.isPending}
+                onClick={() => toggle(product.id)}
+                aria-expanded={isOpen}
                 className={cn(
-                  'shrink-0 h-8 px-4 text-[10px] uppercase tracking-wider transition-colors disabled:opacity-40',
-                  faded
-                    ? 'border border-border/40 text-muted-foreground/40 hover:border-foreground/25 hover:text-foreground hover:bg-muted/30'
-                    : 'bg-foreground text-background hover:bg-foreground/85'
+                  'h-8 w-8 flex items-center justify-center border transition-all duration-200',
+                  isOpen
+                    ? 'border-foreground/30 bg-muted/30 text-foreground'
+                    : 'border-border text-muted-foreground/40 hover:border-foreground/25 hover:text-foreground hover:bg-muted/20'
                 )}
               >
-                Restock
+                <motion.div
+                  animate={{ rotate: isOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </motion.div>
               </button>
             </div>
-          )}
+          ) : masterOos ? (
+            /* Simple product ── inline restock */
+            <div className="flex items-center gap-3 shrink-0">
+              {!faded && <DemandCount count={totalDemand} large />}
+              <RestockBtn
+                onClick={() => handleRestockProduct(product)}
+                disabled={toggleStock.isPending}
+                hasDemand={totalDemand > 0}
+                faded={faded}
+              />
+            </div>
+          ) : null}
         </div>
 
-        {/* Variant sub-rows — one per OOS variant */}
-        {oosVariants.map((variant) => (
-          <div
-            key={variant.id}
-            className="flex items-center gap-4 px-4 py-3 border-b border-border/20 last:border-b-0 hover:bg-muted/10 transition-colors"
-          >
-            <div className="w-11 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className={cn('text-sm truncate', faded ? 'text-foreground/40' : 'text-foreground/80')}>
-                {variant.color}
-              </p>
-            </div>
-            {!faded && (
-              <div className="text-center shrink-0 w-14">
-                <p className="text-xl font-serif leading-none">{variant.demandCount ?? 0}</p>
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground/35 mt-1">
-                  {(variant.demandCount ?? 0) === 1 ? 'request' : 'requests'}
-                </p>
-              </div>
+        {/* ── Accordion panel (variants) ─────────── */}
+        {hasVariants && (
+          <AnimatePresence initial={false}>
+            {isOpen && (
+              <motion.div
+                initial={{ height: 0 }}
+                animate={{ height: 'auto' }}
+                exit={{ height: 0 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="border-t border-border/40">
+
+                  {/* Master offline banner */}
+                  {!product.inStock && (
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50/60 border-b border-amber-100">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-500/70 shrink-0" />
+                        <span className="text-[11px] text-amber-700/70 font-light truncate">
+                          Entire product is offline — master switch is off
+                        </span>
+                      </div>
+                      <RestockBtn
+                        onClick={() => handleRestockProduct(product)}
+                        disabled={toggleStock.isPending}
+                        hasDemand={false}
+                        faded={false}
+                        label="Bring Online"
+                      />
+                    </div>
+                  )}
+
+                  {/* Variant rows */}
+                  {oosVariants.length > 0 ? (
+                    <div className="divide-y divide-border/15">
+                      {oosVariants.map((variant) => (
+                        <div
+                          key={variant.id}
+                          className="flex items-center gap-3 pl-16 pr-4 py-3 hover:bg-muted/10 transition-colors duration-150"
+                        >
+                          {/* Color dot */}
+                          <span className="h-2 w-2 rounded-full bg-foreground/20 shrink-0" />
+
+                          {/* Variant name */}
+                          <span className={cn(
+                            'flex-1 text-[13px] font-light min-w-0 truncate',
+                            faded ? 'text-foreground/40' : 'text-foreground/75'
+                          )}>
+                            {variant.color}
+                          </span>
+
+                          {/* Demand */}
+                          {!faded && <DemandCount count={variant.demandCount ?? 0} />}
+
+                          {/* Restock */}
+                          <RestockBtn
+                            onClick={() => handleRestockVariant(product, variant)}
+                            disabled={toggleVariantStock.isPending}
+                            hasDemand={(variant.demandCount ?? 0) > 0}
+                            faded={faded}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="pl-16 pr-4 py-3 text-[11px] text-muted-foreground/30 font-light italic">
+                      No individual variants are out of stock
+                    </p>
+                  )}
+                </div>
+              </motion.div>
             )}
-            <button
-              onClick={() => handleRestockVariant(product, variant)}
-              disabled={toggleVariantStock.isPending}
-              className={cn(
-                'shrink-0 h-8 px-4 text-[10px] uppercase tracking-wider transition-colors disabled:opacity-40',
-                faded
-                  ? 'border border-border/40 text-muted-foreground/40 hover:border-foreground/25 hover:text-foreground hover:bg-muted/30'
-                  : 'bg-foreground text-background hover:bg-foreground/85'
-              )}
-            >
-              Restock
-            </button>
-          </div>
-        ))}
+          </AnimatePresence>
+        )}
       </div>
     );
   };
 
+  /* ── Render ─────────────────────────────────────── */
   return (
     <div className="max-w-2xl pb-16">
 
+      {/* Back */}
       <button
         onClick={() => navigate(-1)}
         className="group inline-flex items-center gap-2 text-[10px] tracking-[0.2em] uppercase font-light text-muted-foreground/40 hover:text-foreground transition-colors mb-8"
@@ -185,17 +278,21 @@ export const RestockPage = () => {
         Dashboard
       </button>
 
+      {/* Title */}
       <div className="mb-8">
         <h1 className="text-4xl font-serif font-light tracking-wide">Restock Demand</h1>
+        <p className="text-xs text-muted-foreground/45 mt-1.5 font-light tracking-wide">
+          Customer interest signals for out-of-stock items
+        </p>
       </div>
 
       {/* Stat strip */}
       {!isLoading && allProducts.length > 0 && (
         <div className="grid grid-cols-3 border border-border bg-card mb-10">
           {[
-            { value: totalOosItems,   label: 'Out of Stock' },
-            { value: totalWithDemand, label: 'Have Demand'  },
-            { value: totalSignals,    label: 'Total Signals'},
+            { value: totalOosItems,   label: 'Out of Stock'  },
+            { value: totalWithDemand, label: 'Have Demand'   },
+            { value: totalSignals,    label: 'Total Signals' },
           ].map(({ value, label }, i) => (
             <div
               key={label}
@@ -210,15 +307,15 @@ export const RestockPage = () => {
 
       {/* Loading */}
       {isLoading && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="border border-border bg-card p-5 flex items-center gap-4">
-              <Skeleton className="h-11 w-11 shrink-0" />
+            <div key={i} className="border border-border bg-card flex items-center gap-3 px-4 py-3.5">
+              <Skeleton className="h-12 w-12 shrink-0" />
               <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-48" />
-                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-3.5 w-36" />
+                <Skeleton className="h-2.5 w-24" />
               </div>
-              <Skeleton className="h-8 w-24 shrink-0" />
+              <Skeleton className="h-8 w-20 shrink-0" />
             </div>
           ))}
         </div>
@@ -236,11 +333,15 @@ export const RestockPage = () => {
       {/* Most Wanted */}
       {!isLoading && withDemand.length > 0 && (
         <div className="mb-10">
-          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 mb-4">
-            Most Wanted — prioritise these
-          </p>
+          <div className="flex items-center gap-3 mb-4">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 shrink-0">
+              Most Wanted
+            </p>
+            <div className="flex-1 h-px bg-border/40" />
+            <p className="text-[10px] text-muted-foreground/30 shrink-0">Prioritise these first</p>
+          </div>
           <div className="space-y-2">
-            {withDemand.map((p) => renderProductCard(p, false))}
+            {withDemand.map(p => renderCard(p, false))}
           </div>
         </div>
       )}
@@ -248,11 +349,17 @@ export const RestockPage = () => {
       {/* No demand */}
       {!isLoading && noDemand.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/35 mb-3">
-            Out of Stock · No Customer Requests Yet ({noDemand.length})
-          </p>
+          <div className="flex items-center gap-3 mb-3">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/30 shrink-0">
+              Out of Stock · No Requests
+            </p>
+            <div className="flex-1 h-px bg-border/25" />
+            <span className="text-[10px] text-muted-foreground/25 shrink-0 tabular-nums">
+              {noDemand.length}
+            </span>
+          </div>
           <div className="space-y-2">
-            {noDemand.map((p) => renderProductCard(p, true))}
+            {noDemand.map(p => renderCard(p, true))}
           </div>
         </div>
       )}
