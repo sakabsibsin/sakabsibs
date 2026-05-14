@@ -288,8 +288,7 @@ export const ProductDetailPage = () => {
                       'relative flex-shrink-0 h-9 px-4 border text-xs font-light whitespace-nowrap overflow-hidden transition-colors duration-200',
                       selectedVariant === i
                         ? 'border-foreground text-foreground'
-                        : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground',
-                      v.inStock === false && 'opacity-50'
+                        : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
                     )}
                   >
                     {selectedVariant === i && (
@@ -299,14 +298,7 @@ export const ProductDetailPage = () => {
                         transition={{ type: 'spring', stiffness: 350, damping: 32 }}
                       />
                     )}
-                    <span className={cn('relative z-10', v.inStock === false && 'line-through decoration-muted-foreground/60')}>
-                      {v.color}
-                    </span>
-                    {v.inStock === false && (
-                      <span className="relative z-10 ml-1.5 text-[9px] tracking-wider uppercase text-muted-foreground/50">
-                        sold out
-                      </span>
-                    )}
+                    <span className="relative z-10">{v.color}</span>
                   </button>
                 ))}
               </div>
