@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, ChevronDown, AlertCircle, Package } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronDown, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -13,33 +13,6 @@ const getTotalDemand = (p) => {
   return (p.demandCount ?? 0) + vd;
 };
 
-/* ─── Stat card ────────────────────────────────────── */
-const Stat = ({ value, label, accent = false }) => (
-  <div className="flex flex-col items-center justify-center py-6 px-4">
-    <span className={cn(
-      'text-4xl font-serif leading-none mb-1.5',
-      accent ? 'text-red-600' : 'text-foreground'
-    )}>
-      {value}
-    </span>
-    <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-muted-foreground/60">
-      {label}
-    </span>
-  </div>
-);
-
-/* ─── Demand pill ──────────────────────────────────── */
-const DemandPill = ({ count }) => {
-  if (!count) return null;
-  return (
-    <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-300 text-amber-800 text-[11px] font-semibold px-2.5 py-1 shrink-0">
-      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-      {count} {count === 1 ? 'waiting' : 'waiting'}
-    </span>
-  );
-};
-
-/* ─── Page ─────────────────────────────────────────── */
 export const RestockPage = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -55,14 +28,14 @@ export const RestockPage = () => {
   });
 
   /* ── derived ─────────────────────────────────────── */
-  const all        = [...(data?.products ?? [])].sort((a, b) => getTotalDemand(b) - getTotalDemand(a));
-  const withDemand = all.filter(p => getTotalDemand(p) > 0);
-  const noDemand   = all.filter(p => getTotalDemand(p) === 0);
+  const all         = [...(data?.products ?? [])].sort((a, b) => getTotalDemand(b) - getTotalDemand(a));
+  const withDemand  = all.filter(p => getTotalDemand(p) > 0);
+  const noDemand    = all.filter(p => getTotalDemand(p) === 0);
 
   const totalOos = all.reduce((n, p) => {
     if (!p.variants?.length) return n + (!p.inStock ? 1 : 0);
-    const v = p.variants.filter(v => v.inStock === false).length;
-    return n + v + (!p.inStock && v === 0 ? 1 : 0);
+    const oosCount = p.variants.filter(v => v.inStock === false).length;
+    return n + oosCount + (!p.inStock && oosCount === 0 ? 1 : 0);
   }, 0);
   const totalWithDemand = all.reduce((n, p) => {
     if (!p.variants?.length) return n + ((p.demandCount ?? 0) > 0 ? 1 : 0);
@@ -84,10 +57,10 @@ export const RestockPage = () => {
   const restockVariant = (product, variant) =>
     toggleVariantStock.mutate({ productId: product.id, variantId: variant.id, inStock: true }, {
       onSuccess: () => {
-        toast.success(`${variant.color} restocked.`);
+        toast.success(`${variant.color} is back in stock.`);
         qc.invalidateQueries({ queryKey: productKeys.lists() });
       },
-      onError: () => toast.error('Failed.'),
+      onError: () => toast.error('Failed to update stock.'),
     });
 
   /* ── product card ────────────────────────────────── */
@@ -98,104 +71,104 @@ export const RestockPage = () => {
     const masterOos   = !product.inStock && (!hasVariants || oosVariants.length === 0);
     const demand      = getTotalDemand(product);
     const isOpen      = expanded.has(product.id);
-    const hasDemand   = demand > 0;
 
     return (
-      <div
-        key={product.id}
-        className={cn(
-          'bg-card border border-border overflow-hidden transition-all duration-200',
-          !faded && hasDemand && 'border-l-[3px] border-l-amber-400',
-          !faded && !hasDemand && 'border-l-[3px] border-l-red-300',
-          faded && 'opacity-65'
-        )}
-      >
-        {/* ─── Product header ──────────────────────── */}
-        <div className={cn(
-          'flex items-center gap-4 px-5 py-4',
-          !faded && hasDemand && 'bg-amber-50/20'
-        )}>
+      <div key={product.id} className={cn(
+        'border bg-card overflow-hidden',
+        faded ? 'border-border/50' : 'border-border'
+      )}>
+
+        {/* ── Product header ───────────────────────── */}
+        <div className="flex items-center gap-3 px-4 py-4">
 
           {/* Thumbnail */}
           <div
-            className="h-14 w-14 shrink-0 overflow-hidden"
-            style={{ background: 'hsl(34,40%,93%)' }}
+            className="h-12 w-12 shrink-0 overflow-hidden"
+            style={{ background: 'hsl(34,40%,94%)' }}
           >
             {thumb
-              ? <img src={thumb} alt="" className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex items-center justify-center">
-                  <Package className="h-5 w-5 text-muted-foreground/30" />
-                </div>
+              ? <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+              : <div className="w-full h-full" />
             }
           </div>
 
-          {/* Name + meta */}
+          {/* Info */}
           <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-semibold text-foreground leading-tight truncate">
+            <p className={cn('text-sm font-semibold truncate', faded ? 'text-foreground/60' : 'text-foreground')}>
               {product.name}
             </p>
-            <div className="flex items-center flex-wrap gap-x-1.5 mt-1">
-              <span className="text-xs text-muted-foreground/70">{product.category}</span>
+            <div className="flex items-center flex-wrap gap-x-1 mt-0.5">
+              <span className="text-[11px] text-muted-foreground/70">{product.category}</span>
               {product.productCode && (
-                <span className="text-xs text-muted-foreground/55">· {product.productCode}</span>
+                <span className="text-[11px] text-muted-foreground/55">· {product.productCode}</span>
+              )}
+              {hasVariants && oosVariants.length > 0 && (
+                <span className="text-[11px] font-semibold text-red-600">
+                  · {oosVariants.length}/{product.variants.length} OOS
+                </span>
               )}
             </div>
-            {hasVariants && (
-              <div className="flex items-center gap-1.5 mt-1.5">
-                {oosVariants.length > 0 ? (
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 leading-none">
-                    {oosVariants.length} of {product.variants.length} variants out of stock
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-muted-foreground/55 italic">
-                    All variants in stock — product master offline
-                  </span>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Right side actions */}
-          <div className="flex items-center gap-3 shrink-0">
-            {hasDemand && <DemandPill count={demand} />}
-
-            {hasVariants ? (
+          {/* Actions */}
+          {hasVariants ? (
+            /* Variant product → expand toggle */
+            <div className="flex items-center gap-2.5 shrink-0">
+              {demand > 0 && (
+                <div className="text-right">
+                  <p className="text-xl font-serif leading-none text-foreground">{demand}</p>
+                  <p className="text-[9px] uppercase tracking-wide text-muted-foreground/65 mt-0.5">
+                    {demand === 1 ? 'request' : 'requests'}
+                  </p>
+                </div>
+              )}
               <button
                 onClick={() => toggle(product.id)}
                 aria-expanded={isOpen}
                 className={cn(
-                  'h-9 w-9 flex items-center justify-center border transition-all duration-200',
+                  'h-8 w-8 flex items-center justify-center border transition-all duration-200 shrink-0',
                   isOpen
                     ? 'bg-foreground text-background border-foreground'
-                    : 'border-border text-foreground/60 hover:border-foreground hover:bg-muted/30'
+                    : 'border-border text-foreground/65 hover:border-foreground hover:bg-muted/30'
                 )}
               >
                 <motion.span
                   animate={{ rotate: isOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                   className="flex items-center justify-center"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </motion.span>
               </button>
-            ) : masterOos ? (
+            </div>
+          ) : masterOos ? (
+            /* Simple product → inline restock */
+            <div className="flex items-center gap-3 shrink-0">
+              {demand > 0 && (
+                <div className="text-right">
+                  <p className="text-xl font-serif leading-none text-foreground">{demand}</p>
+                  <p className="text-[9px] uppercase tracking-wide text-muted-foreground/65 mt-0.5">
+                    {demand === 1 ? 'request' : 'requests'}
+                  </p>
+                </div>
+              )}
               <button
                 onClick={() => restockProduct(product)}
                 disabled={toggleStock.isPending}
                 className={cn(
-                  'h-9 px-5 text-[11px] uppercase tracking-wider font-bold transition-all duration-200 disabled:opacity-40',
-                  hasDemand
+                  'h-9 px-4 text-[11px] uppercase tracking-wider font-bold transition-all duration-200 disabled:opacity-40 shrink-0',
+                  demand > 0
                     ? 'bg-foreground text-background hover:bg-foreground/85'
-                    : 'border border-border text-foreground/75 hover:bg-muted/30'
+                    : 'border border-border text-foreground/70 hover:bg-muted/30'
                 )}
               >
                 Restock
               </button>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
 
-        {/* ─── Variant accordion ───────────────────── */}
+        {/* ── Accordion: variant list ───────────────── */}
         {hasVariants && (
           <AnimatePresence initial={false}>
             {isOpen && (
@@ -206,88 +179,75 @@ export const RestockPage = () => {
                 transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
                 style={{ overflow: 'hidden' }}
               >
-                {/* Master offline notice */}
+                {/* Master offline banner */}
                 {!product.inStock && (
-                  <div className="flex items-center justify-between gap-3 px-5 py-3 bg-amber-50 border-y border-amber-200">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border-t border-b border-amber-200">
+                    <div className="flex items-center gap-2 min-w-0">
                       <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-                      <p className="text-xs font-semibold text-amber-800">
-                        Entire product is offline — master switch is off
-                      </p>
+                      <span className="text-xs font-semibold text-amber-800">
+                        Product offline — master switch is off
+                      </span>
                     </div>
                     <button
                       onClick={() => restockProduct(product)}
                       disabled={toggleStock.isPending}
-                      className="h-8 px-4 text-[10px] uppercase tracking-wider font-bold border border-amber-400 text-amber-900 hover:bg-amber-100 transition-colors disabled:opacity-40 shrink-0"
+                      className="shrink-0 h-8 px-3 text-[10px] uppercase tracking-wider font-bold border border-amber-400 text-amber-800 hover:bg-amber-100 transition-colors disabled:opacity-40"
                     >
                       Bring Online
                     </button>
                   </div>
                 )}
 
-                {/* Variant list */}
-                <div className="border-t border-border/50">
-                  {/* Header row */}
-                  <div className="grid grid-cols-[1fr_120px_80px_88px] items-center gap-2 px-5 py-2 bg-muted/40 border-b border-border/40">
-                    <span className="text-[10px] uppercase tracking-[0.18em] font-bold text-foreground/50">Variant</span>
-                    <span className="text-[10px] uppercase tracking-[0.18em] font-bold text-foreground/50 text-center">Status</span>
-                    <span className="text-[10px] uppercase tracking-[0.18em] font-bold text-foreground/50 text-right">Interest</span>
-                    <span className="text-[10px] uppercase tracking-[0.18em] font-bold text-foreground/50 text-right">Action</span>
-                  </div>
-
-                  {/* Variant rows */}
-                  {product.variants.map((variant, idx) => {
-                    const isOos   = variant.inStock === false;
+                {/* Variant rows */}
+                <div className="divide-y divide-border/40 border-t border-border/40">
+                  {product.variants.map((variant) => {
+                    const isOos  = variant.inStock === false;
                     const vDemand = variant.demandCount ?? 0;
                     return (
                       <div
                         key={variant.id}
                         className={cn(
-                          'grid grid-cols-[1fr_120px_80px_88px] items-center gap-2 px-5 py-3 border-b border-border/20 last:border-0 transition-colors duration-100',
-                          isOos ? 'bg-red-50/40 hover:bg-red-50/70' : 'hover:bg-muted/15'
+                          'flex items-center gap-3 px-4 py-3 transition-colors duration-150',
+                          isOos ? 'bg-red-50/50 hover:bg-red-50/80' : 'hover:bg-muted/15'
                         )}
                       >
-                        {/* Variant name */}
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className={cn(
-                            'h-2 w-2 rounded-full shrink-0',
-                            isOos ? 'bg-red-500' : 'bg-green-500/80'
-                          )} />
-                          <span className={cn(
-                            'text-sm font-medium capitalize truncate',
-                            isOos ? 'text-foreground' : 'text-foreground/50'
-                          )}>
-                            {variant.color}
-                          </span>
-                        </div>
+                        {/* Status dot + Color name */}
+                        <span className={cn(
+                          'h-2.5 w-2.5 rounded-full shrink-0',
+                          isOos ? 'bg-red-500' : 'bg-green-500/70'
+                        )} />
+
+                        <span className={cn(
+                          'flex-1 text-sm font-medium capitalize min-w-0 truncate',
+                          isOos ? 'text-foreground' : 'text-foreground/55'
+                        )}>
+                          {variant.color}
+                        </span>
 
                         {/* Status badge */}
-                        <div className="flex justify-center">
-                          {isOos ? (
-                            <span className="text-[9px] uppercase tracking-wide font-bold text-red-700 bg-red-100 border border-red-300 px-2 py-1 leading-none whitespace-nowrap">
-                              Out of Stock
-                            </span>
-                          ) : (
-                            <span className="text-[9px] uppercase tracking-wide font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-1 leading-none whitespace-nowrap">
-                              In Stock
-                            </span>
-                          )}
-                        </div>
+                        <span className={cn(
+                          'shrink-0 text-[9px] uppercase tracking-wider font-bold px-2 py-1 border leading-none',
+                          isOos
+                            ? 'text-red-700 bg-red-100 border-red-300'
+                            : 'text-green-700 bg-green-50 border-green-200'
+                        )}>
+                          {isOos ? 'Stock Out' : 'In Stock'}
+                        </span>
 
-                        {/* Demand */}
-                        <div className="text-right">
+                        {/* Demand count */}
+                        <div className="shrink-0 w-14 text-right">
                           {vDemand > 0 ? (
-                            <span className="inline-flex items-baseline gap-0.5 justify-end">
-                              <span className="text-base font-serif text-foreground">{vDemand}</span>
-                              <span className="text-[9px] text-muted-foreground/60"> req</span>
+                            <span className="inline-flex items-baseline gap-0.5">
+                              <span className="text-base font-serif text-foreground leading-none">{vDemand}</span>
+                              <span className="text-[9px] text-muted-foreground/65">req</span>
                             </span>
                           ) : (
-                            <span className="text-sm text-muted-foreground/35">—</span>
+                            <span className="text-muted-foreground/40 text-sm">—</span>
                           )}
                         </div>
 
                         {/* Action */}
-                        <div className="flex justify-end">
+                        <div className="shrink-0 w-[72px] flex justify-end">
                           {isOos ? (
                             <button
                               onClick={() => restockVariant(product, variant)}
@@ -302,7 +262,7 @@ export const RestockPage = () => {
                               Restock
                             </button>
                           ) : (
-                            <span className="text-sm text-muted-foreground/30">—</span>
+                            <span className="text-muted-foreground/35 text-sm">—</span>
                           )}
                         </div>
                       </div>
@@ -317,14 +277,14 @@ export const RestockPage = () => {
     );
   };
 
-  /* ── Page shell ──────────────────────────────────── */
+  /* ── Page ────────────────────────────────────────── */
   return (
     <div className="max-w-2xl pb-16">
 
       {/* Back */}
       <button
         onClick={() => navigate(-1)}
-        className="group inline-flex items-center gap-1.5 text-[11px] tracking-[0.18em] uppercase font-semibold text-muted-foreground/60 hover:text-foreground transition-colors mb-8"
+        className="group inline-flex items-center gap-1.5 text-[11px] tracking-[0.18em] uppercase font-medium text-muted-foreground/65 hover:text-foreground transition-colors mb-8"
       >
         <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
         Dashboard
@@ -334,34 +294,40 @@ export const RestockPage = () => {
       <div className="mb-8">
         <h1 className="text-4xl font-serif font-light tracking-wide">Restock Demand</h1>
         <p className="text-sm text-muted-foreground/65 mt-1.5">
-          Track which out-of-stock items customers are waiting for
+          Customer interest signals for out-of-stock items
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Stat strip */}
       {!isLoading && all.length > 0 && (
         <div className="grid grid-cols-3 border border-border bg-card mb-10">
-          <div className="border-r border-border">
-            <Stat value={totalOos} label="Out of Stock" accent />
-          </div>
-          <div className="border-r border-border">
-            <Stat value={totalWithDemand} label="Have Demand" />
-          </div>
-          <Stat value={totalSignals} label="Total Signals" />
+          {[
+            { value: totalOos,        label: 'Stock Out'  },
+            { value: totalWithDemand, label: 'Have Demand'   },
+            { value: totalSignals,    label: 'Total Signals' },
+          ].map(({ value, label }, i) => (
+            <div
+              key={label}
+              className={cn('flex flex-col items-center justify-center py-5', i < 2 && 'border-r border-border')}
+            >
+              <p className="text-3xl font-serif mb-1">{value}</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/65 font-medium">{label}</p>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Loading */}
       {isLoading && (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="border border-border bg-card flex items-center gap-4 px-5 py-4">
-              <Skeleton className="h-14 w-14 shrink-0" />
-              <div className="flex-1 space-y-2.5">
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-3 w-24" />
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="border border-border bg-card flex items-center gap-3 px-4 py-4">
+              <Skeleton className="h-12 w-12 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-2.5 w-20" />
               </div>
-              <Skeleton className="h-9 w-24 shrink-0" />
+              <Skeleton className="h-9 w-20 shrink-0" />
             </div>
           ))}
         </div>
@@ -370,47 +336,44 @@ export const RestockPage = () => {
       {/* Empty */}
       {!isLoading && all.length === 0 && (
         <div className="border border-border bg-card py-24 text-center">
-          <CheckCircle2 className="h-12 w-12 text-green-500/40 mx-auto mb-4" />
-          <p className="font-serif text-2xl font-light text-foreground/60 mb-2">All clear</p>
+          <CheckCircle2 className="h-10 w-10 text-muted-foreground/30 mx-auto mb-4" />
+          <p className="font-serif text-2xl font-light text-muted-foreground/60 mb-1">All clear</p>
           <p className="text-sm text-muted-foreground/55">Every product is currently in stock.</p>
         </div>
       )}
 
-      {/* ── Most Wanted ────────────────────────────── */}
+      {/* Most Wanted */}
       {!isLoading && withDemand.length > 0 && (
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-foreground/80">
-                Most Wanted
-              </h2>
-              <span className="h-px flex-1 bg-border w-8" />
-            </div>
-            <span className="text-xs text-muted-foreground/60 font-medium">
-              Prioritise these first
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-foreground/75 shrink-0">
+              Most Wanted
             </span>
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-[11px] text-muted-foreground/60 shrink-0">Prioritise these first</span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {withDemand.map(p => renderCard(p, false))}
           </div>
-        </section>
+        </div>
       )}
 
-      {/* ── No Requests ────────────────────────────── */}
+      {/* No demand */}
       {!isLoading && noDemand.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-foreground/55">
-              Out of Stock · No Requests
-            </h2>
-            <span className="text-xs font-bold text-muted-foreground/50 tabular-nums bg-muted/50 border border-border/60 px-2 py-0.5">
+        <div>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-foreground/60 shrink-0">
+              Stock Out · No Requests
+            </span>
+            <div className="flex-1 h-px bg-border/60" />
+            <span className="text-[11px] font-semibold text-muted-foreground/55 shrink-0 tabular-nums">
               {noDemand.length}
             </span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {noDemand.map(p => renderCard(p, true))}
           </div>
-        </section>
+        </div>
       )}
     </div>
   );
