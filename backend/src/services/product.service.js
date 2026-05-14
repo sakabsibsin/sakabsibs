@@ -63,8 +63,16 @@ export const createProduct = async (body) => {
   }
 };
 
-export const updateProduct = (id, body) =>
-  Product.findByIdAndUpdate(id, body, { new: true, runValidators: true });
+export const updateProduct = async (id, body) => {
+  let finalBody = body;
+  if (Array.isArray(body.variants) && body.variants.length > 0) {
+    const allOos = body.variants.every((v) => v.inStock === false);
+    const anyInStock = body.variants.some((v) => v.inStock !== false);
+    if (allOos) finalBody = { ...body, inStock: false };
+    else if (anyInStock) finalBody = { ...body, inStock: true };
+  }
+  return Product.findByIdAndUpdate(id, finalBody, { new: true, runValidators: true });
+};
 
 export const deleteProduct = (id) => Product.findByIdAndDelete(id);
 
@@ -74,12 +82,23 @@ export const toggleStock = (id, inStock) =>
 export const registerDemand = (id) =>
   Product.findByIdAndUpdate(id, { $inc: { demandCount: 1 } }, { new: true });
 
-export const toggleVariantStock = (productId, variantId, inStock) =>
-  Product.findOneAndUpdate(
+export const toggleVariantStock = async (productId, variantId, inStock) => {
+  const product = await Product.findOneAndUpdate(
     { _id: productId, 'variants._id': variantId },
     { $set: { 'variants.$.inStock': inStock } },
     { new: true }
   );
+  if (!product) return null;
+
+  // Auto-sync product-level inStock from variant states
+  const allOos    = product.variants.every((v) => v.inStock === false);
+  const anyInStock = product.variants.some((v) => v.inStock !== false);
+  if (allOos && product.inStock !== false)
+    return Product.findByIdAndUpdate(productId, { inStock: false }, { new: true });
+  if (anyInStock && !product.inStock)
+    return Product.findByIdAndUpdate(productId, { inStock: true }, { new: true });
+  return product;
+};
 
 export const registerVariantDemand = (productId, variantId) =>
   Product.findOneAndUpdate(
