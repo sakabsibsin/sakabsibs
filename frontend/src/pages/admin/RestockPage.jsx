@@ -154,7 +154,7 @@ export const RestockPage = () => {
           {hasVariants ? (
             /* Variant product ── chevron expand */
             <div className="flex items-center gap-2.5 shrink-0">
-              {!faded && totalDemand > 0 && <DemandCount count={totalDemand} large />}
+              {totalDemand > 0 && <DemandCount count={totalDemand} large />}
               <button
                 onClick={() => toggle(product.id)}
                 aria-expanded={isOpen}
@@ -187,7 +187,7 @@ export const RestockPage = () => {
           ) : null}
         </div>
 
-        {/* ── Accordion panel (variants) ─────────── */}
+        {/* ── Accordion panel (all variants) ────────── */}
         {hasVariants && (
           <AnimatePresence initial={false}>
             {isOpen && (
@@ -219,43 +219,86 @@ export const RestockPage = () => {
                     </div>
                   )}
 
-                  {/* Variant rows */}
-                  {oosVariants.length > 0 ? (
-                    <div className="divide-y divide-border/15">
-                      {oosVariants.map((variant) => (
+                  {/* Column headers */}
+                  <div className="flex items-center gap-3 pl-16 pr-4 py-1.5 border-b border-border/20 bg-muted/10">
+                    <span className="w-2 shrink-0" />
+                    <span className="flex-1 text-[9px] uppercase tracking-[0.2em] text-muted-foreground/35 font-medium">Variant</span>
+                    <span className="w-24 text-center text-[9px] uppercase tracking-[0.2em] text-muted-foreground/35 font-medium shrink-0">Status</span>
+                    <span className="w-20 text-right text-[9px] uppercase tracking-[0.2em] text-muted-foreground/35 font-medium shrink-0">Interest</span>
+                    <span className="w-20 shrink-0" />
+                  </div>
+
+                  {/* ALL variant rows — in-stock and OOS */}
+                  <div className="divide-y divide-border/10">
+                    {product.variants.map((variant) => {
+                      const isOos   = variant.inStock === false;
+                      const demand  = variant.demandCount ?? 0;
+                      return (
                         <div
                           key={variant.id}
-                          className="flex items-center gap-3 pl-16 pr-4 py-3 hover:bg-muted/10 transition-colors duration-150"
+                          className={cn(
+                            'flex items-center gap-3 pl-16 pr-4 py-3 transition-colors duration-150',
+                            isOos ? 'hover:bg-red-50/30' : 'hover:bg-muted/5'
+                          )}
                         >
-                          {/* Color dot */}
-                          <span className="h-2 w-2 rounded-full bg-foreground/20 shrink-0" />
-
-                          {/* Variant name */}
+                          {/* Status dot */}
                           <span className={cn(
-                            'flex-1 text-[13px] font-light min-w-0 truncate',
-                            faded ? 'text-foreground/40' : 'text-foreground/75'
+                            'h-2 w-2 rounded-full shrink-0',
+                            isOos ? 'bg-red-400' : 'bg-green-500/50'
+                          )} />
+
+                          {/* Variant color name */}
+                          <span className={cn(
+                            'flex-1 text-[13px] font-light min-w-0 truncate capitalize',
+                            isOos ? 'text-foreground/80' : 'text-foreground/40'
                           )}>
                             {variant.color}
                           </span>
 
-                          {/* Demand */}
-                          {!faded && <DemandCount count={variant.demandCount ?? 0} />}
+                          {/* Stock status badge */}
+                          <div className="w-24 flex justify-center shrink-0">
+                            {isOos ? (
+                              <span className="inline-flex items-center gap-1 text-[9px] tracking-wider uppercase font-medium text-red-500/90 bg-red-50 border border-red-200/70 px-2 py-0.5 leading-none">
+                                Out of Stock
+                              </span>
+                            ) : (
+                              <span className="text-[9px] tracking-wider uppercase text-green-700/40 font-medium">
+                                In Stock
+                              </span>
+                            )}
+                          </div>
 
-                          {/* Restock */}
-                          <RestockBtn
-                            onClick={() => handleRestockVariant(product, variant)}
-                            disabled={toggleVariantStock.isPending}
-                            hasDemand={(variant.demandCount ?? 0) > 0}
-                            faded={faded}
-                          />
+                          {/* Demand count — always shown */}
+                          <div className="w-20 text-right shrink-0">
+                            {demand > 0 ? (
+                              <div>
+                                <span className="text-base font-serif leading-none">{demand}</span>
+                                <span className="text-[9px] text-muted-foreground/40 ml-1">
+                                  {demand === 1 ? 'req.' : 'req.'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground/25">—</span>
+                            )}
+                          </div>
+
+                          {/* Action — Restock only for OOS */}
+                          <div className="w-20 flex justify-end shrink-0">
+                            {isOos ? (
+                              <RestockBtn
+                                onClick={() => handleRestockVariant(product, variant)}
+                                disabled={toggleVariantStock.isPending}
+                                hasDemand={demand > 0}
+                                faded={false}
+                              />
+                            ) : (
+                              <span className="text-[9px] text-muted-foreground/20">—</span>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="pl-16 pr-4 py-3 text-[11px] text-muted-foreground/30 font-light italic">
-                      No individual variants are out of stock
-                    </p>
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
               </motion.div>
             )}
