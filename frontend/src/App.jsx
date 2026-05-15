@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
+import { getToken } from '@/lib/apiClient';
 import { ScrollManager } from '@/components/ScrollManager';
 import { ArrowLeft } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
@@ -26,14 +27,19 @@ const StoreLayout = () => (
   </div>
 );
 
-const AdminLayout = () => (
-  <div className="min-h-[100dvh] flex flex-col bg-muted/20">
-    <AdminSidebar />
-    <main className="flex-1 container mx-auto px-4 pt-4 flex flex-col">
-      <Outlet />
-    </main>
-  </div>
-);
+const AdminLayout = () => {
+  // Synchronous localStorage check — no token means definitely not logged in.
+  // Redirect before any admin content renders, eliminating the flash.
+  if (!getToken()) return <Navigate to="/admin/login" replace />;
+  return (
+    <div className="min-h-[100dvh] flex flex-col bg-muted/20">
+      <AdminSidebar />
+      <main className="flex-1 container mx-auto px-4 pt-4 flex flex-col">
+        <Outlet />
+      </main>
+    </div>
+  );
+};
 
 const NewProductPage = () => <ProductForm />;
 const EditProductPage = () => {
