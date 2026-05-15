@@ -1,13 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { getToken } from '@/lib/apiClient';
 import * as api from './api';
 
 const settingsKey = ['settings'];
-const authKey = ['auth-status'];
+const authKey    = ['auth-status'];
 
-/** Silently checks if the current session is authenticated.
- *  Returns { authenticated: true } or null if not logged in.
- *  Does NOT redirect — safe to call from user-facing pages. */
+/** Checks if the current session is authenticated.
+ *  Skips the network call entirely when no token is in localStorage.
+ *  Returns { authenticated: true } or undefined when not logged in. */
 export const useAuthStatus = () =>
   useQuery({
     queryKey: authKey,
@@ -15,8 +16,7 @@ export const useAuthStatus = () =>
     staleTime: 5 * 60 * 1000,
     retry: false,
     throwOnError: false,
-    // Suppress 401 errors — not-logged-in is a valid state for store pages
-    meta: { suppressError: true },
+    enabled: !!getToken(),
   });
 
 export const useSettings = () =>
@@ -27,7 +27,7 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: api.login,
     onSuccess: () => {
-      // Invalidate auth status so Navbar updates immediately
+      // Token is now in localStorage — tell React Query to re-check auth status
       qc.invalidateQueries({ queryKey: authKey });
     },
   });

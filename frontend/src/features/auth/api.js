@@ -1,10 +1,18 @@
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, setToken, removeToken } from '@/lib/apiClient';
 
-export const login = async (password) => { await apiClient.post('/auth/login', { password }); };
-export const logout = async () => { await apiClient.post('/auth/logout'); };
+export const login = async (password) => {
+  const { data } = await apiClient.post('/auth/login', { password });
+  setToken(data.data.token);
+};
+
+export const logout = async () => {
+  removeToken();
+};
+
 export const fetchAuthStatus = async () => {
   const { data } = await apiClient.get('/auth/me');
   return data.data;
 };
-export const fetchSettings = async () => { const { data } = await apiClient.get('/settings'); return data.data; };
-export const updateSetting = async (key, value) => { await apiClient.put(`/settings/${key}`, { value }); };
+
+export const fetchSettings  = async () => { const { data } = await apiClient.get('/settings'); return data.data; };
+export const updateSetting  = async (key, value) => { await apiClient.put(`/settings/${key}`, { value }); };

@@ -12,13 +12,3 @@ export const verifyAdminPassword = async (password) => {
 
 export const signAdminToken = () =>
   jwt.sign({ role: 'admin' }, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
-
-export const getCookieOptions = (isProd) => ({
-  httpOnly: true,
-  secure: isProd,
-  // cross-domain (Vercel frontend ↔ Render backend) requires 'none' + secure:true
-  // 'lax' is fine for same-origin dev (localhost)
-  sameSite: isProd ? 'none' : 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  path: '/',
-});
