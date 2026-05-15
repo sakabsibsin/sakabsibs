@@ -16,7 +16,9 @@ export const signAdminToken = () =>
 export const getCookieOptions = (isProd) => ({
   httpOnly: true,
   secure: isProd,
-  sameSite: isProd ? 'strict' : 'lax',
+  // cross-domain (Vercel frontend ↔ Render backend) requires 'none' + secure:true
+  // 'lax' is fine for same-origin dev (localhost)
+  sameSite: isProd ? 'none' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000,
   path: '/',
 });

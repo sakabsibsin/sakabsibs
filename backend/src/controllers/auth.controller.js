@@ -13,7 +13,8 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (_req, res) => {
-  res.clearCookie('sakabsibs_token', { path: '/' });
+  // Must pass the same options used at login — browser matches on name+path+domain+secure+sameSite
+  res.clearCookie('sakabsibs_token', getCookieOptions(env.NODE_ENV === 'production'));
   sendSuccess(res, { message: 'Logged out' });
 });
 
