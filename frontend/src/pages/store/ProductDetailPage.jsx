@@ -132,7 +132,9 @@ export const ProductDetailPage = () => {
     </div>
   );
 
-  const phoneNumber = (settings?.whatsapp_number || '').replace(/\D/g, '');
+  const rawPhone = (settings?.whatsapp_number || '').replace(/\D/g, '');
+  // Auto-prepend India country code if admin saved only 10-digit local number
+  const phoneNumber = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
   const variants = product.variants ?? [];
   const hasVariants = variants.length > 0;
 
