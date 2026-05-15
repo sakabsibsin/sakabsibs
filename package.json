@@ -1,16 +1,13 @@
 {
-  "name": "shopflo",
+  "name": "sakabsibs",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "client",
-    "server"
-  ],
+  "workspaces": ["frontend", "backend"],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
-    "dev:server": "npm run dev -w server",
-    "dev:client": "npm run dev -w client",
-    "start": "concurrently \"npm run start -w server\" \"npm run serve -w client\""
+    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build": "npm run build -w backend && npm run build -w frontend"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
