@@ -10,6 +10,7 @@ import { CatalogPage } from '@/pages/store/CatalogPage';
 import { ProductDetailPage } from '@/pages/store/ProductDetailPage';
 import { AboutPage } from '@/pages/store/AboutPage';
 import { ContactPage } from '@/pages/store/ContactPage';
+import { PolicyPage } from '@/pages/store/PolicyPage';
 import { LoginPage } from '@/pages/admin/LoginPage';
 import { DashboardPage } from '@/pages/admin/DashboardPage';
 import { ProductsPage } from '@/pages/admin/ProductsPage';
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/policy" element={<PolicyPage />} />
       </Route>
 
       {/* ── Admin (protected via 401 redirect) ─ */}

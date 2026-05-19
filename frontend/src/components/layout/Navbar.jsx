@@ -11,6 +11,7 @@ const navLinks = [
   { to: '/products', label: 'Shop' },
   { to: '/about', label: 'About' },
   { to: '/contact', label: 'Contact' },
+  { to: '/policy', label: 'Policy' },
 ];
 
 export const Navbar = () => {

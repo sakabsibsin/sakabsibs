@@ -40,6 +40,7 @@ export const Footer = () => (
             <Link to="/products" className="block text-xs font-light text-muted-foreground hover:text-primary transition-colors duration-200">Shop</Link>
             <Link to="/about" className="block text-xs font-light text-muted-foreground hover:text-primary transition-colors duration-200">About</Link>
             <Link to="/contact" className="block text-xs font-light text-muted-foreground hover:text-primary transition-colors duration-200">Contact</Link>
+            <Link to="/policy" className="block text-xs font-light text-muted-foreground hover:text-primary transition-colors duration-200">Shipping & Returns</Link>
           </div>
         </motion.div>
 
