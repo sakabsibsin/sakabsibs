@@ -1,10 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Search, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Search, X, RotateCcw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Switch } from '@/components/ui/Switch';
+import {
+  AlertDialog, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter,
+  AlertDialogCancel, AlertDialogAction,
+} from '@/components/ui/AlertDialog';
 import { useProducts, useToggleStock, useToggleVariantStock, productKeys } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { getProductThumbnail, cn } from '@/lib/utils';
@@ -42,7 +46,7 @@ const flattenOos = (products) => {
 /* ── grid shared by header + every data row ─────
    col widths: img | product | code | demand | restock
    min-w on wrapper prevents collapse on small screens ── */
-const GRID = 'grid grid-cols-[44px_1fr_88px_60px_56px] items-center gap-x-2 px-4';
+const GRID = 'grid grid-cols-[44px_1fr_80px_52px_52px] items-center gap-x-2 px-4';
 
 export const RestockPage = () => {
   const qc = useQueryClient();
@@ -70,11 +74,19 @@ export const RestockPage = () => {
     return rows;
   }, [allItems, search, activeCategory]);
 
-  const withDemand = filtered.filter((i) => i.demand > 0);
-  const noDemand   = filtered.filter((i) => i.demand === 0);
-  const isPending  = toggleStock.isPending || toggleVariantStock.isPending;
-  const isFiltered = !!search.trim() || activeCategory !== 'ALL';
-  const chips      = ['ALL', ...categories.map((c) => c.name)];
+  const withDemand       = filtered.filter((i) => i.demand > 0);
+  const noDemand         = filtered.filter((i) => i.demand === 0);
+  const isPending        = toggleStock.isPending || toggleVariantStock.isPending;
+  const isFiltered       = !!search.trim() || activeCategory !== 'ALL';
+  const chips            = ['ALL', ...categories.map((c) => c.name)];
+  const [pendingRestock, setPendingRestock] = useState(null);
+  const [selectedItem,   setSelectedItem]   = useState(null);
+
+  const confirmRestock = () => {
+    if (!pendingRestock) return;
+    handleRestock(pendingRestock);
+    setPendingRestock(null);
+  };
 
   const handleRestock = (item) => {
     if (item.type === 'variant') {
@@ -101,18 +113,21 @@ export const RestockPage = () => {
     <div className={cn(GRID, 'py-2.5 bg-muted/50 border-b border-border sticky top-0 z-10')}>
       <div />
       <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold">Product</span>
-      <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">Code</span>
+      <span className="hidden md:block text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">Code</span>
       <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">Demand</span>
-      <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">Restock</span>
+      <div />
     </div>
   );
 
   /* ── Single row ─────────────────────────────── */
   const Row = ({ item, dim }) => (
-    <div className={cn(
-      GRID, 'py-3 border-b border-border/20 last:border-0 transition-colors duration-100',
-      dim ? 'opacity-40 hover:opacity-60' : 'hover:bg-muted/20'
-    )}>
+    <div
+      onClick={() => setSelectedItem(item)}
+      className={cn(
+        GRID, 'py-3 border-b border-border/20 last:border-0 transition-colors duration-100 cursor-pointer',
+        dim ? 'opacity-40 hover:opacity-60' : 'hover:bg-muted/20'
+      )}
+    >
       {/* Thumbnail */}
       <div className="h-11 w-11 shrink-0 overflow-hidden bg-muted/60">
         {item.thumbnail
@@ -122,33 +137,39 @@ export const RestockPage = () => {
 
       {/* Product name + variant + category */}
       <div className="min-w-0">
-        <p className="text-[13px] font-medium text-foreground leading-snug truncate">
-          {item.name}
-        </p>
+        <p className="text-[13px] font-medium text-foreground leading-snug truncate">{item.name}</p>
         {item.variant_label && (
           <p className="text-xs text-muted-foreground/65 leading-tight truncate mt-0.5">{item.variant_label}</p>
         )}
-        <p className="text-[10px] text-muted-foreground/40 leading-tight truncate mt-0.5">{item.category}</p>
+        <p className="text-[10px] text-muted-foreground/40 leading-tight truncate mt-0.5">
+          {item.category}
+          {item.code && <span className="md:hidden"> · {item.code}</span>}
+        </p>
       </div>
 
-      {/* Code */}
-      <div className="flex items-center justify-center">
-        <span className="text-[11px] font-mono text-muted-foreground/55 tabular-nums text-center">
-          {item.code || '—'}
-        </span>
+      {/* Code — md+ only */}
+      <div className="hidden md:flex items-center justify-center">
+        <span className="text-[11px] font-mono text-muted-foreground/55 tabular-nums text-center">{item.code || '—'}</span>
       </div>
 
       {/* Demand */}
       <div className="flex items-center justify-center">
         {item.demand > 0
-          ? <span className="text-base font-bold text-amber-600 tabular-nums leading-none">{item.demand}</span>
-          : <span className="text-muted-foreground/25 text-sm">—</span>
+          ? <span className="text-sm font-bold text-amber-600 tabular-nums leading-none">{item.demand}</span>
+          : <span className="text-muted-foreground/20 text-sm">—</span>
         }
       </div>
 
-      {/* Restock toggle */}
-      <div className="flex items-center justify-center">
-        <Switch checked={false} disabled={isPending} onCheckedChange={() => handleRestock(item)} />
+      {/* Restock button — stop propagation so row click doesn't also fire */}
+      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setPendingRestock(item)}
+          disabled={isPending}
+          title="Mark as in stock"
+          className="h-8 w-8 rounded-full border border-green-300 flex items-center justify-center text-green-500 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );
@@ -156,7 +177,7 @@ export const RestockPage = () => {
   /* ── Loading skeleton ───────────────────────── */
   const LoadingSkeleton = () => (
     <div className="border border-border bg-card overflow-x-auto">
-      <div style={{ minWidth: 560 }}>
+      <div style={{ minWidth: 400 }}>
         <div className={cn(GRID, 'py-2.5 bg-muted/50 border-b border-border')}>
           <div /><Skeleton className="h-2 w-14" /><Skeleton className="h-2 w-10 mx-auto" />
           <Skeleton className="h-2 w-10 mx-auto" /><Skeleton className="h-2 w-10 mx-auto" />
@@ -171,7 +192,7 @@ export const RestockPage = () => {
             </div>
             <div className="flex justify-center"><Skeleton className="h-2.5 w-14" /></div>
             <div className="flex justify-center"><Skeleton className="h-4 w-6" /></div>
-            <div className="flex justify-center"><Skeleton className="h-5 w-10 rounded-full" /></div>
+            <div className="flex justify-center"><Skeleton className="h-8 w-8 rounded-full" /></div>
           </div>
         ))}
       </div>
@@ -266,7 +287,7 @@ export const RestockPage = () => {
       {/* Table — overflow-x-auto so it scrolls rather than clips on narrow screens */}
       {!isLoading && filtered.length > 0 && (
         <div className="border border-border bg-card overflow-x-auto">
-          <div style={{ minWidth: 540 }}>
+          <div style={{ minWidth: 400 }}>
             <THead />
 
             {withDemand.map((item) => <Row key={item.key} item={item} dim={false} />)}
@@ -286,6 +307,83 @@ export const RestockPage = () => {
           <button onClick={() => { setSearch(''); setCategory('ALL'); }} className="underline hover:text-foreground transition-colors">Clear</button>
         </p>
       )}
+
+      {/* ── Product detail modal ─────────────────── */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedItem(null)} />
+          <div className="relative z-10 w-full max-w-sm bg-background border border-border shadow-xl">
+
+            {/* Image */}
+            <div className="aspect-square w-full overflow-hidden bg-muted/50">
+              {selectedItem.thumbnail
+                ? <img src={selectedItem.thumbnail} alt="" className="w-full h-full object-cover" />
+                : <div className="w-full h-full bg-muted" />}
+            </div>
+
+            {/* Details */}
+            <div className="p-5 space-y-4">
+              <div>
+                <h2 className="font-serif text-xl font-light leading-snug">{selectedItem.name}</h2>
+                {selectedItem.variant_label && (
+                  <p className="text-sm text-muted-foreground mt-0.5">{selectedItem.variant_label}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-y-3 gap-x-4 border-t border-border pt-4">
+                {[
+                  { label: 'Category', value: selectedItem.category },
+                  { label: 'Code',     value: selectedItem.code || '—' },
+                  { label: 'Demand',   value: selectedItem.demand > 0 ? `${selectedItem.demand} waiting` : 'No requests yet' },
+                  { label: 'Status',   value: 'Out of Stock' },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/40 font-medium mb-0.5">{label}</p>
+                    <p className={cn(
+                      'text-sm font-medium',
+                      label === 'Demand' && selectedItem.demand > 0 && 'text-amber-600',
+                      label === 'Status' && 'text-red-500'
+                    )}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="h-10 px-5 border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => { setPendingRestock(selectedItem); setSelectedItem(null); }}
+                  className="flex-1 h-10 bg-green-600 hover:bg-green-700 text-white text-xs uppercase tracking-widest font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Mark In Stock
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={!!pendingRestock} onOpenChange={(v) => { if (!v) setPendingRestock(null); }}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Mark as in stock?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingRestock?.variant_label
+              ? <><span className="font-medium text-foreground">{pendingRestock.name}</span> · {pendingRestock.variant_label} will be marked as available in your store.</>
+              : <><span className="font-medium text-foreground">{pendingRestock?.name}</span> will be marked as available in your store.</>
+            }
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setPendingRestock(null)}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmRestock} className="bg-green-600 hover:bg-green-700 text-white border-0">Confirm</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialog>
 
     </div>
   );
