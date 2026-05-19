@@ -358,19 +358,17 @@ export const ProductForm = ({ productId }) => {
           {/* ── Left column ─────────────────────── */}
           <div className="space-y-3">
 
-            {/* Name + Price + Category + Material — one card */}
-            <div className="bg-card border border-border p-4">
+            {/* Product details — one unified card */}
+            <div className="bg-card border border-border p-4 space-y-3">
+              {/* Name — full width */}
+              <div>
+                <label className={labelCls}>Product Name</label>
+                <input className={inputCls} placeholder="e.g. Silver Cuff Bracelet" {...register('name')} />
+                {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
+              </div>
+
+              {/* Category + Price — side by side */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Product Name</label>
-                  <input className={inputCls} placeholder="e.g. Silver Cuff Bracelet" {...register('name')} />
-                  {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
-                </div>
-                <div>
-                  <label className={labelCls}>Base Price (₹)</label>
-                  <input type="number" step="1" min="0" placeholder="0.00" className={inputCls} {...register('price')} />
-                  {errors.price && <p className="text-xs text-destructive mt-1">{errors.price.message}</p>}
-                </div>
                 <div>
                   <label className={labelCls}>Category</label>
                   {categories.length === 0 ? (
@@ -390,22 +388,29 @@ export const ProductForm = ({ productId }) => {
                   {errors.category && <p className="text-xs text-destructive mt-1">{errors.category.message}</p>}
                 </div>
                 <div>
-                  <label className={labelCls}>Material <span className="normal-case tracking-normal text-muted-foreground/50">(optional)</span></label>
-                  <input className={inputCls} placeholder="e.g. Sterling Silver" {...register('material')} />
+                  <label className={labelCls}>Price (₹)</label>
+                  <input type="number" step="1" min="0" placeholder="0.00" className={inputCls} {...register('price')} />
+                  {errors.price && <p className="text-xs text-destructive mt-1">{errors.price.message}</p>}
                 </div>
               </div>
-            </div>
 
-            {/* Description */}
-            <div className="bg-card border border-border p-4">
-              <label className={labelCls}>Description</label>
-              <textarea
-                rows={3}
-                placeholder="Describe the product..."
-                className={`${inputCls} h-auto py-2 resize-none`}
-                {...register('description')}
-              />
-              {errors.description && <p className="text-xs text-destructive mt-1">{errors.description.message}</p>}
+              {/* Material — full width */}
+              <div>
+                <label className={labelCls}>Material <span className="normal-case tracking-normal text-muted-foreground/50">(optional)</span></label>
+                <input className={inputCls} placeholder="e.g. Sterling Silver, Gold Plated" {...register('material')} />
+              </div>
+
+              {/* Description — joined, no separate card */}
+              <div>
+                <label className={labelCls}>Description</label>
+                <textarea
+                  rows={3}
+                  placeholder="Describe the product..."
+                  className={`${inputCls} h-auto py-2 resize-none`}
+                  {...register('description')}
+                />
+                {errors.description && <p className="text-xs text-destructive mt-1">{errors.description.message}</p>}
+              </div>
             </div>
 
             {/* Images */}
