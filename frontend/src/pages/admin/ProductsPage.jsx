@@ -80,9 +80,9 @@ export const ProductsPage = () => {
   const chips = ["ALL", ...categories.map((c) => c.name)];
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-56px-2.5rem)] min-h-0 overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-56px-2rem)] min-h-0 overflow-hidden">
       {/* ── Top bar ──────────────────────────────── */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           <Link
             to="/admin/dashboard"
@@ -111,7 +111,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* ── Search ───────────────────────────────── */}
-      <div className="relative mb-2">
+      <div className="relative mb-1.5">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/28 pointer-events-none" />
         <input
           value={search}
@@ -134,7 +134,7 @@ export const ProductsPage = () => {
         Active tab: thick bottom border that overlaps the container's
         bottom border via -mb-px, giving a clean underline-tab effect.
       */}
-      <div className="cat-tabs-scroll flex gap-1.5 overflow-x-auto pb-1.5 pt-0.5 mb-0" style={{ touchAction: 'pan-x' }}>
+      <div className="cat-tabs-scroll flex gap-1.5 overflow-x-auto pb-1 pt-0 mb-0" style={{ touchAction: 'pan-x' }}>
         {chips.map((cat) => (
           <button
             key={cat}
@@ -152,7 +152,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* ── Products ─────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto min-h-0 mt-0 pb-28">
+      <div className="flex-1 overflow-y-auto min-h-0 mt-0 pb-24">
         {isLoading ? (
           <SkeletonRows />
         ) : filtered.length === 0 ? (
