@@ -134,16 +134,16 @@ export const ProductsPage = () => {
         Active tab: thick bottom border that overlaps the container's
         bottom border via -mb-px, giving a clean underline-tab effect.
       */}
-      <div className="cat-tabs-scroll flex overflow-x-auto border-b border-border/35 mb-0" style={{ touchAction: 'pan-x' }}>
+      <div className="cat-tabs-scroll flex gap-1.5 overflow-x-auto pb-2.5 pt-0.5 mb-0" style={{ touchAction: 'pan-x' }}>
         {chips.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
             className={cn(
-              "flex-shrink-0 px-4 pb-3 pt-0.5 text-[10px] tracking-[0.2em] uppercase font-medium whitespace-nowrap transition-all duration-200 -mb-px border-b-[1.5px]",
+              "flex-shrink-0 h-7 px-3.5 text-[10px] tracking-[0.18em] uppercase font-medium whitespace-nowrap transition-all duration-150",
               activeCategory === cat
-                ? "text-foreground border-foreground"
-                : "text-muted-foreground/38 border-transparent hover:text-muted-foreground/65",
+                ? "bg-foreground text-background"
+                : "text-muted-foreground/55 hover:text-foreground border border-border hover:border-foreground/40",
             )}
           >
             {cat}
