@@ -111,7 +111,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* ── Search ───────────────────────────────── */}
-      <div className="relative mb-3">
+      <div className="relative mb-2">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/28 pointer-events-none" />
         <input
           value={search}
@@ -134,7 +134,7 @@ export const ProductsPage = () => {
         Active tab: thick bottom border that overlaps the container's
         bottom border via -mb-px, giving a clean underline-tab effect.
       */}
-      <div className="cat-tabs-scroll flex gap-1.5 overflow-x-auto pb-2.5 pt-0.5 mb-0" style={{ touchAction: 'pan-x' }}>
+      <div className="cat-tabs-scroll flex gap-1.5 overflow-x-auto pb-1.5 pt-0.5 mb-0" style={{ touchAction: 'pan-x' }}>
         {chips.map((cat) => (
           <button
             key={cat}
@@ -152,7 +152,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* ── Products ─────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto min-h-0 mt-0">
+      <div className="flex-1 overflow-y-auto min-h-0 mt-0 pb-20">
         {isLoading ? (
           <SkeletonRows />
         ) : filtered.length === 0 ? (
@@ -176,27 +176,27 @@ export const ProductsPage = () => {
             {/* sticky: h-14 = 56 px (AdminSidebar height) */}
             <thead className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
               <tr className="border-b border-border/35">
-                <th className="w-[60px] pl-0 pr-2 py-3.5 text-left">
+                <th className="w-[60px] pl-0 pr-2 py-2 text-left">
                   <span className="text-[9px] tracking-[0.28em] uppercase font-medium text-muted-foreground/70">
                     IMG
                   </span>
                 </th>
-                <th className="px-2 py-3.5 text-left">
+                <th className="px-2 py-2 text-left">
                   <span className="text-[9px] tracking-[0.28em] uppercase font-medium text-muted-foreground/70">
                     NAME
                   </span>
                 </th>
-                <th className="w-28 px-2 py-3.5 text-right hidden sm:table-cell">
+                <th className="w-28 px-2 py-2 text-right hidden sm:table-cell">
                   <span className="text-[9px] tracking-[0.28em] uppercase font-medium text-muted-foreground/70">
                     PRICE
                   </span>
                 </th>
-                <th className="w-[88px] px-2 py-3.5 text-center">
+                <th className="w-[88px] px-2 py-2 text-center">
                   <span className="text-[9px] tracking-[0.28em] uppercase font-medium text-muted-foreground/70">
                     STOCK
                   </span>
                 </th>
-                <th className="w-[76px] pl-2 pr-0 py-3.5 text-right">
+                <th className="w-[76px] pl-2 pr-0 py-2 text-right">
                   <span className="text-[9px] tracking-[0.28em] uppercase font-medium text-muted-foreground/70">
                     ACTIONS
                   </span>
