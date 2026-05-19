@@ -10,6 +10,11 @@ import {
 import { useCategories } from "@/features/categories/hooks";
 import { Switch } from "@/components/ui/Switch";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+  AlertDialog, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter,
+  AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/AlertDialog";
 import { formatPrice, cn, getProductThumbnail, getEffectivePrice } from "@/lib/utils";
 
 /* ── Skeleton ─────────────────────────────────────── */
@@ -43,7 +48,8 @@ export const ProductsPage = () => {
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("ALL");
-  const [deletingId, setDeletingId] = useState(null);
+  const [deletingId, setDeletingId]       = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const filtered = allProducts.filter((p) => {
     const matchCat =
@@ -58,14 +64,17 @@ export const ProductsPage = () => {
     return matchCat && matchSearch;
   });
 
-  const handleDelete = (product) => {
-    if (!confirm(`Delete "${product.name}"?`)) return;
-    setDeletingId(product.id);
-    deleteProduct.mutate(product.id, {
+  const handleDelete = (product) => setPendingDelete(product);
+
+  const confirmDelete = () => {
+    if (!pendingDelete) return;
+    setDeletingId(pendingDelete.id);
+    deleteProduct.mutate(pendingDelete.id, {
       onSuccess: () => toast.success("Product deleted"),
-      onError: () => toast.error("Failed to delete"),
+      onError:   () => toast.error("Failed to delete"),
       onSettled: () => setDeletingId(null),
     });
+    setPendingDelete(null);
   };
 
   const chips = ["ALL", ...categories.map((c) => c.name)];
@@ -293,6 +302,20 @@ export const ProductsPage = () => {
         .cat-tabs-scroll::-webkit-scrollbar { display: none; }
         .cat-tabs-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete product?</AlertDialogTitle>
+          <AlertDialogDescription>
+            <span className="font-medium text-foreground">{pendingDelete?.name}</span>
+            {' '}will be permanently removed from your catalog. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setPendingDelete(null)}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialog>
     </div>
   );
 };
