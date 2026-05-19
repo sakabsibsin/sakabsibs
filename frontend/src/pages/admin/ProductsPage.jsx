@@ -152,7 +152,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* ── Products ─────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto min-h-0 mt-0 pb-24">
+      <div className="flex-1 overflow-y-auto min-h-0 mt-0 pb-20">
         {isLoading ? (
           <SkeletonRows />
         ) : filtered.length === 0 ? (

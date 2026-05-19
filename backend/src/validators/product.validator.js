@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 const variantSchema = z.object({
-  color:       z.string().min(1, 'Color is required'),
-  price:       z.coerce.number().min(0),
+  color:       z.string().trim().min(1, 'Color is required'),
+  price:       z.coerce.number().min(1, 'Price must be at least ₹1'),
   images:      z.array(z.string()).optional().default([]),
   isDefault:   z.boolean().default(false),
   inStock:     z.boolean().default(true),
@@ -10,18 +10,18 @@ const variantSchema = z.object({
 });
 
 const productBaseSchema = z.object({
-  name:        z.string().min(1, 'Name is required'),
-  description: z.string().min(1, 'Description is required'),
-  price:       z.coerce.number().min(0, 'Price must be non-negative'),
+  name:        z.string().trim().min(1, 'Name is required'),
+  description: z.string().trim().min(1, 'Description is required'),
+  price:       z.coerce.number().min(1, 'Price must be at least ₹1'),
   images:      z.array(z.string()).default([]),
   material:    z.string().optional().default(''),
-  category:    z.string().min(1, 'Category is required'),
+  category:    z.string().trim().min(1, 'Category is required'),
   inStock:     z.boolean().default(true),
   featured:    z.boolean().default(false),
   variants:    z.array(variantSchema).optional().default([]),
 });
 
-export const createProductSchema = productBaseSchema.superRefine((data, ctx) => {
+const imageVariantRefinement = (data, ctx) => {
   if (!data.variants?.length && !data.images?.length) {
     ctx.addIssue({
       path: ['images'],
@@ -29,9 +29,16 @@ export const createProductSchema = productBaseSchema.superRefine((data, ctx) => 
       message: 'At least one image is required when no variants are added',
     });
   }
-});
+};
 
-export const updateProductSchema = productBaseSchema.partial();
+export const createProductSchema = productBaseSchema.superRefine(imageVariantRefinement);
+
+// Apply the same image/variant check on update so admins can't strip all images
+export const updateProductSchema = productBaseSchema.partial().superRefine((data, ctx) => {
+  if (data.variants !== undefined && data.images !== undefined) {
+    imageVariantRefinement(data, ctx);
+  }
+});
 
 export const toggleStockSchema = z.object({
   inStock: z.boolean(),

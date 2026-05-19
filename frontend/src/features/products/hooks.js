@@ -45,6 +45,7 @@ export const useUpdateProduct = () => {
       qc.invalidateQueries({ queryKey: productKeys.detail(id) });
       qc.invalidateQueries({ queryKey: productKeys.lists() });
       qc.invalidateQueries({ queryKey: productKeys.featured() });
+      qc.invalidateQueries({ queryKey: productKeys.stats() });
     },
   });
 };

@@ -21,8 +21,8 @@ import { useCategories } from '@/features/categories/hooks';
 import { API_URL } from '@/constants/config';
 
 const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  description: z.string().min(1, 'Description is required'),
+  name: z.string().trim().min(1, 'Name is required'),
+  description: z.string().trim().min(1, 'Description is required'),
   price: z.coerce.number({ invalid_type_error: 'Enter a valid price' }).min(1, 'Price is required'),
   material: z.string().optional().default(''),
   category: z.string().min(1, 'Category is required'),
@@ -30,7 +30,7 @@ const schema = z.object({
   featured: z.boolean().default(false),
   images: z.array(z.any()).optional().default([]),
   variants: z.array(z.object({
-    color:   z.string().min(1, 'Color is required'),
+    color:   z.string().trim().min(1, 'Color is required'),
     price:   z.coerce.number().min(0),
     images:  z.array(z.any()).optional().default([]),
     isDefault: z.boolean().default(false),
@@ -51,7 +51,7 @@ const labelCls = 'block uppercase tracking-widest text-[10px] mb-1 text-foregrou
 
 /* ── Variant modal ────────────────────────────────── */
 const variantSchema = z.object({
-  color:   z.string().min(1, 'Color name is required'),
+  color:   z.string().trim().min(1, 'Color name is required'),
   price:   z.coerce.number({ invalid_type_error: 'Enter a valid price' }).min(1, 'Price is required'),
   images:  z.array(z.any()).min(1, 'At least one photo is required'),
   inStock: z.boolean().default(true),
@@ -190,7 +190,7 @@ const VariantModal = ({ open, onClose, initialData, onSave }) => {
 export const ProductForm = ({ productId }) => {
   const navigate = useNavigate();
   const isEditing = !!productId;
-  const { data: product, isLoading } = useProduct(productId);
+  const { data: product, isLoading, isError } = useProduct(productId);
   const { data: categories = [] } = useCategories();
   const create = useCreateProduct();
   const update = useUpdateProduct();
@@ -321,6 +321,21 @@ export const ProductForm = ({ productId }) => {
 
   if (isEditing && isLoading) {
     return <div className="p-8 text-center text-muted-foreground font-serif">Loading product details...</div>;
+  }
+
+  if (isEditing && isError) {
+    return (
+      <div className="p-8 flex flex-col items-center gap-4 text-center">
+        <p className="font-serif text-xl font-light text-muted-foreground/60">Product not found.</p>
+        <p className="text-xs text-muted-foreground/45">It may have been deleted or the link is incorrect.</p>
+        <Link
+          to="/admin/products"
+          className="text-2xs tracking-[0.2em] uppercase font-light text-muted-foreground hover:text-foreground border-b border-border hover:border-foreground pb-0.5 transition-colors"
+        >
+          Back to products
+        </Link>
+      </div>
+    );
   }
 
   const isPending = create.isPending || update.isPending;
