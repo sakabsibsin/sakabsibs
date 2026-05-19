@@ -137,6 +137,10 @@ export const ProductDetailPage = () => {
   const phoneNumber = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
   const variants = product.variants ?? [];
   const hasVariants = variants.length > 0;
+  // Display order: default variant first, rest in original order
+  const displayVariants = [...variants]
+    .map((v, originalIndex) => ({ ...v, originalIndex }))
+    .sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
 
   const activePrice = hasVariants && selectedVariant !== null
     ? variants[selectedVariant].price
@@ -299,13 +303,13 @@ export const ProductDetailPage = () => {
                 Variants
               </p>
               <div className="variant-pills flex overflow-x-auto gap-2 pb-0.5">
-                {variants.map((v, i) => {
+                {displayVariants.map((v) => {
                   const isOos = v.inStock === false;
-                  const isSelected = selectedVariant === i;
+                  const isSelected = selectedVariant === v.originalIndex;
                   return (
                     <button
-                      key={i}
-                      onClick={() => selectVariant(i)}
+                      key={v.originalIndex}
+                      onClick={() => selectVariant(v.originalIndex)}
                       className={cn(
                         'relative flex-shrink-0 h-9 px-4 border text-xs font-light whitespace-nowrap overflow-hidden transition-colors duration-200',
                         isOos

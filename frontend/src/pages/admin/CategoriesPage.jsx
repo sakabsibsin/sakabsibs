@@ -1,14 +1,15 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowLeft, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Breadcrumb } from "@/components/admin/Breadcrumb";
 import {
   useCategories,
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
 } from "@/features/categories/hooks";
+import { useProductStats, productKeys } from "@/features/products/hooks";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   AlertDialog,
@@ -19,19 +20,28 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/AlertDialog";
+import { cn, getApiError } from "@/lib/utils";
+
+const inputCls =
+  "flex h-10 w-full border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground";
 
 export const CategoriesPage = () => {
-  const [name, setName] = useState("");
+  const qc = useQueryClient();
+  const [name, setName]               = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState("");
+  const [editingId, setEditingId]     = useState(null);
+  const [editName, setEditName]       = useState("");
 
   const { data: categories = [], isLoading } = useCategories();
+  const { data: stats }                       = useProductStats();
   const create = useCreateCategory();
   const update = useUpdateCategory();
   const remove = useDeleteCategory();
 
-  const autoPrefix = name.trim().substring(0, 2).toUpperCase();
+  const autoPrefix  = name.trim().substring(0, 2).toUpperCase();
+  const countMap    = Object.fromEntries(
+    (stats?.categories ?? []).map((c) => [c.category, c.count])
+  );
 
   const handleCreate = (e) => {
     e.preventDefault();
@@ -40,14 +50,8 @@ export const CategoriesPage = () => {
     create.mutate(
       { name: trimmed, codePrefix: trimmed.substring(0, 2).toUpperCase() },
       {
-        onSuccess: () => {
-          toast.success(`"${trimmed}" has been added.`);
-          setName("");
-        },
-        onError: (err) => {
-          const msg = err?.response?.data?.error ?? "Failed to create category.";
-          toast.error(msg);
-        },
+        onSuccess: () => { toast.success(`"${trimmed}" added.`); setName(""); },
+        onError: (err) => toast.error(getApiError(err, 'Failed to create category.')),
       }
     );
   };
@@ -59,13 +63,21 @@ export const CategoriesPage = () => {
       { id: cat.id, body: { name: trimmed } },
       {
         onSuccess: () => {
-          toast.success(`Renamed to "${trimmed}". All products updated.`);
+          toast.success(`Renamed to "${trimmed}".`);
           setEditingId(null);
+          // Swap old category name in stats cache immediately — no refetch needed,
+          // prevents the brief flash to 0 while waiting for a fresh response.
+          qc.setQueryData(productKeys.stats(), (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              categories: old.categories.map((c) =>
+                c.category === cat.name ? { ...c, category: trimmed } : c
+              ),
+            };
+          });
         },
-        onError: (err) => {
-          const msg = err?.response?.data?.message || "Failed to rename category.";
-          toast.error(msg);
-        },
+        onError: (err) => toast.error(getApiError(err, 'Failed to rename category.')),
       }
     );
   };
@@ -73,174 +85,215 @@ export const CategoriesPage = () => {
   const handleDelete = () => {
     if (!deleteTarget) return;
     remove.mutate(deleteTarget.id, {
-      onSuccess: () => {
-        toast.success(`"${deleteTarget.name}" removed.`);
-        setDeleteTarget(null);
-      },
+      onSuccess: () => { toast.success(`"${deleteTarget.name}" removed.`); setDeleteTarget(null); },
       onError: (err) => {
-        const msg =
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Failed to delete category.";
-        toast.error(msg);
+        toast.error(getApiError(err, 'Failed to delete category.'));
         setDeleteTarget(null);
       },
     });
   };
 
   return (
-    <div className="max-w-2xl space-y-8">
-      <Breadcrumb
-        items={[
-          { label: "Dashboard", to: "/admin/dashboard" },
-          { label: "Categories" },
-        ]}
-      />
+    <div className="max-w-5xl pb-12">
 
       {/* Header */}
-      <div className="border-b border-border/40 pb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Link
-            to="/admin/dashboard"
-            className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <h1 className="text-3xl font-serif tracking-wide">Categories</h1>
-        </div>
-        <p className="text-muted-foreground text-sm">
-          Manage product categories. The code prefix is auto-generated from the first two letters of the name.
-        </p>
-      </div>
-
-      {/* Add form */}
-      <div className="bg-card border border-border p-6">
-        <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 mb-3">New Category</p>
-        <form onSubmit={handleCreate} className="flex gap-3">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Rings, Necklaces, Earrings"
-            className="flex h-10 w-full border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground flex-1"
-          />
-          <button
-            type="submit"
-            disabled={create.isPending || !name.trim()}
-            className="inline-flex items-center gap-2 h-10 px-6 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-            Add
-          </button>
-        </form>
-        {name.trim() && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Code prefix will be:{" "}
-            <span className="font-mono font-medium text-foreground">
-              {autoPrefix}
+      <div className="flex items-center gap-3 mb-6">
+        <Link
+          to="/admin/dashboard"
+          className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors shrink-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="text-2xl font-serif tracking-wide">Categories</h1>
+          {!isLoading && (
+            <span className="text-xs text-muted-foreground/50 tabular-nums">
+              {categories.length} {categories.length === 1 ? "category" : "categories"}
             </span>
-          </p>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* List */}
-      <div className="bg-card border border-border">
-        <div className="p-4 border-b border-border">
-          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50">
-            Existing Categories
-          </p>
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-5 items-start">
+
+        {/* ── Left: Add form ─────────────────────── */}
+        <div className="bg-card border border-border p-5 space-y-4 md:sticky md:top-[70px]">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 mb-0.5">New Category</p>
+            <p className="text-xs text-muted-foreground/45">
+              A 2-letter code prefix is auto-generated from the name.
+            </p>
+          </div>
+
+          <form onSubmit={handleCreate} className="space-y-3">
+            <div>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Rings, Earrings, Bangles"
+                className={inputCls}
+              />
+              {name.trim() && (
+                <p className="text-[11px] text-muted-foreground/55 mt-1.5">
+                  Code prefix:{" "}
+                  <span className="font-mono font-semibold text-foreground">{autoPrefix}</span>
+                </p>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={create.isPending || !name.trim()}
+              className="w-full h-10 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Category
+            </button>
+          </form>
+
+          {/* Mini stat */}
+          {!isLoading && categories.length > 0 && (
+            <div className="border-t border-border/40 pt-3 flex items-center gap-2 text-xs text-muted-foreground/50">
+              <Tag className="h-3 w-3" />
+              {stats?.total ?? 0} total products across all categories
+            </div>
+          )}
         </div>
 
-        {isLoading ? (
-          <div className="p-4 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
+        {/* ── Right: Category list ────────────────── */}
+        <div className="bg-card border border-border">
+
+          {/* List header */}
+          <div className="grid grid-cols-[1fr_60px_80px_72px] items-center gap-2 px-4 py-2.5 bg-muted/40 border-b border-border">
+            <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 font-semibold">Name</span>
+            <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 font-semibold text-center">Prefix</span>
+            <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45 font-semibold text-center">Products</span>
+            <div />
           </div>
-        ) : categories.length === 0 ? (
-          <div className="py-14 text-center">
-            <p className="text-muted-foreground/50 font-serif text-lg italic">No categories yet.</p>
-            <p className="text-xs text-muted-foreground/40 mt-1">Add your first one above.</p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-border">
-            {categories.map((cat) => (
-              <li key={cat.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/30 transition-colors gap-3">
-                {editingId === cat.id ? (
-                  <div className="flex flex-col gap-2 flex-1 pr-2">
-                    <input
-                      autoFocus
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleUpdate(cat);
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                      className="flex h-9 w-full border border-foreground bg-transparent px-3 text-sm focus:outline-none"
-                    />
-                    <div className="flex items-center gap-2  justify-end">
-                      
+
+          {isLoading ? (
+            <div className="divide-y divide-border/30">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="grid grid-cols-[1fr_60px_80px_72px] items-center gap-2 px-4 py-3.5">
+                  <Skeleton className="h-3 w-28" />
+                  <Skeleton className="h-5 w-10 mx-auto" />
+                  <Skeleton className="h-3 w-8 mx-auto" />
+                  <div className="flex justify-end gap-1">
+                    <Skeleton className="h-7 w-7" />
+                    <Skeleton className="h-7 w-7" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="py-16 flex flex-col items-center gap-2 text-center">
+              <Tag className="h-7 w-7 text-muted-foreground/20" />
+              <p className="font-serif text-lg font-light text-muted-foreground/50">No categories yet</p>
+              <p className="text-xs text-muted-foreground/35">Add your first category using the form.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/30">
+              {categories.map((cat) => (
+                <li key={cat.id}>
+                  <div className="grid grid-cols-[1fr_60px_80px_72px] items-center gap-2 px-4 py-3.5 hover:bg-muted/20 transition-colors">
+                    <span className="text-sm font-medium truncate">{cat.name}</span>
+
+                    <div className="flex justify-center">
+                      <span className="text-[10px] font-mono font-semibold text-foreground/70 bg-muted px-2 py-0.5 tracking-wider">
+                        {cat.codePrefix}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-center">
+                      <span className={cn(
+                        "text-sm tabular-nums",
+                        (countMap[cat.name] ?? 0) > 0
+                          ? "text-foreground font-medium"
+                          : "text-muted-foreground/30"
+                      )}>
+                        {countMap[cat.name] ?? 0}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-0.5">
                       <button
-                        onClick={() => setEditingId(null)}
-                        className="h-7 px-4 border border-border text-xs hover:bg-muted transition-colors"
+                        onClick={() => { setEditingId(cat.id); setEditName(cat.name); }}
+                        className="h-7 w-7 flex items-center justify-center text-primary/40 hover:text-primary transition-colors"
+                        title="Rename"
                       >
-                        Cancel
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => handleUpdate(cat)}
-                        disabled={update.isPending}
-                        className="h-7 px-4 bg-foreground text-background text-xs hover:bg-foreground/85 transition-colors disabled:opacity-40"
+                        onClick={() => setDeleteTarget(cat)}
+                        className="h-7 w-7 flex items-center justify-center text-red-400/50 hover:text-red-600 transition-colors"
+                        title="Delete"
                       >
-                        Save
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-sm font-medium truncate">{cat.name}</span>
-                    <span className="text-[10px] font-mono text-muted-foreground/70 bg-muted/60 px-2 py-0.5 tracking-wider shrink-0">
-                      {cat.codePrefix}
-                    </span>
-                  </div>
-                )}
-
-                {editingId !== cat.id && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => { setEditingId(cat.id); setEditName(cat.name); }}
-                      className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(cat)}
-                      className="h-8 w-8 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors shrink-0"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
-      {/* Delete dialog */}
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
+      {/* Edit modal */}
+      {editingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditingId(null)} />
+          <div className="relative z-10 w-full max-w-sm bg-background border border-border shadow-xl p-6 space-y-5">
+            <div>
+              <h2 className="font-serif text-xl font-light">Rename Category</h2>
+              <p className="text-xs text-muted-foreground/55 mt-1">
+                Renaming will update all products in this category.
+              </p>
+            </div>
+            <input
+              autoFocus
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleUpdate(categories.find((c) => c.id === editingId));
+                if (e.key === "Escape") setEditingId(null);
+              }}
+              className="flex h-10 w-full border border-border bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground"
+            />
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setEditingId(null)}
+                className="flex-1 h-10 border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleUpdate(categories.find((c) => c.id === editingId))}
+                disabled={update.isPending || !editName.trim()}
+                className="flex-1 h-10 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {update.isPending ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Category</AlertDialogTitle>
+          <AlertDialogTitle>Delete category?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete &ldquo;{deleteTarget?.name}&rdquo;? This cannot be undone.
-            Categories with existing products cannot be deleted — reassign those products first.
+            <span className="font-medium text-foreground">{deleteTarget?.name}</span> will be permanently removed.
+            {(countMap[deleteTarget?.name] ?? 0) > 0 && (
+              <span className="block mt-1 text-destructive">
+                This category has {countMap[deleteTarget?.name]} product{countMap[deleteTarget?.name] !== 1 ? "s" : ""} — reassign them first.
+              </span>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setDeleteTarget(null)}>
-            Cancel
-          </AlertDialogCancel>
+          <AlertDialogCancel onClick={() => setDeleteTarget(null)}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialog>

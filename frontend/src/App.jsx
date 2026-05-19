@@ -35,7 +35,7 @@ const AdminLayout = () => {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-muted/20">
       <AdminSidebar />
-      <main className="flex-1 container mx-auto px-4 pt-4 flex flex-col">
+      <main className="flex-1 container mx-auto px-4 pt-4 pb-6 flex flex-col">
         <Outlet />
       </main>
     </div>

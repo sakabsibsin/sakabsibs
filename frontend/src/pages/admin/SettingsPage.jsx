@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useUpdateSetting } from '@/features/auth/hooks';
+import { getApiError } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Breadcrumb } from '@/components/admin/Breadcrumb';
 
@@ -29,7 +30,7 @@ export const SettingsPage = () => {
     e.preventDefault();
     update.mutate({ key, value: value.trim() }, {
       onSuccess: () => toast.success(successMsg),
-      onError: () => toast.error('Failed to save. Please try again.'),
+      onError: (err) => toast.error(getApiError(err, 'Failed to save. Please try again.')),
     });
   };
 
@@ -38,7 +39,7 @@ export const SettingsPage = () => {
     if (newPassword.length < 6) return toast.error('Password must be at least 6 characters.');
     update.mutate({ key: 'admin_password', value: newPassword }, {
       onSuccess: () => { toast.success('Password updated.'); setNewPassword(''); },
-      onError: () => toast.error('Failed to update password.'),
+      onError: (err) => toast.error(getApiError(err, 'Failed to update password.')),
     });
   };
 

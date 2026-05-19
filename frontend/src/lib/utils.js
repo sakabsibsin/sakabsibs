@@ -3,6 +3,13 @@ import { twMerge } from 'tailwind-merge';
 
 export const cn = (...inputs) => twMerge(clsx(inputs));
 
+/** Extract a user-readable message from an Axios error response. */
+export const getApiError = (err, fallback = 'Something went wrong. Please try again.') =>
+  err?.response?.data?.error ||
+  err?.response?.data?.message ||
+  err?.message ||
+  fallback;
+
 export const formatPrice = (price) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
 

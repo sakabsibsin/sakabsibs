@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/AlertDialog';
 import { useProducts, useToggleStock, useToggleVariantStock, productKeys } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
-import { getProductThumbnail, cn } from '@/lib/utils';
+import { getProductThumbnail, cn, getApiError } from '@/lib/utils';
 
 /* ── Flatten OOS items into flat sortable list ── */
 const flattenOos = (products) => {
@@ -93,7 +93,7 @@ export const RestockPage = () => {
         { productId: item.product.id, variantId: item.variant.id, inStock: true },
         {
           onSuccess: () => { toast.success(`${item.variant.color} is back in stock.`); qc.invalidateQueries({ queryKey: productKeys.lists() }); },
-          onError:   () => toast.error('Failed to update.'),
+          onError: (err) => toast.error(getApiError(err, 'Failed to update stock.')),
         }
       );
     } else {
@@ -101,7 +101,7 @@ export const RestockPage = () => {
         { id: item.product.id, inStock: true },
         {
           onSuccess: () => { toast.success(`"${item.product.name}" is back in stock.`); qc.invalidateQueries({ queryKey: productKeys.stats() }); qc.invalidateQueries({ queryKey: productKeys.lists() }); },
-          onError:   () => toast.error('Failed to update.'),
+          onError: (err) => toast.error(getApiError(err, 'Failed to update stock.')),
         }
       );
     }

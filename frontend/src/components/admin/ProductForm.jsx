@@ -13,7 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter,
   AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/AlertDialog';
-import { cn } from '@/lib/utils';
+import { cn, getApiError } from '@/lib/utils';
 import { getToken } from '@/lib/apiClient';
 import { useCreateProduct, useUpdateProduct, useProduct } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
@@ -297,7 +297,7 @@ export const ProductForm = ({ productId }) => {
           };
         }
       } catch (err) {
-        toast.error(err.message || 'One or more images failed to upload. Please try again.');
+        toast.error(getApiError(err, 'One or more images failed to upload. Please try again.'));
         return;
       } finally {
         setUploadingImages(false);
@@ -314,7 +314,7 @@ export const ProductForm = ({ productId }) => {
       }
       navigate('/admin/products');
     } catch {
-      toast.error(isEditing ? 'Failed to update product.' : 'Failed to create product. Please try again.');
+      toast.error(isEditing ? 'Failed to update product. Please try again.' : 'Failed to create product. Please try again.');
     }
   };
 
@@ -549,20 +549,20 @@ export const ProductForm = ({ productId }) => {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col gap-2">
-              <button
-                type="submit"
-                disabled={uploadingImages || isPending}
-                className="h-11 w-full bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              >
-                {uploadingImages ? 'Uploading...' : isPending ? 'Saving...' : isEditing ? 'Update Product' : 'Create Product'}
-              </button>
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => navigate('/admin/products')}
-                className="h-11 w-full border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
+                className="flex-1 h-11 border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
               >
                 Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={uploadingImages || isPending}
+                className="flex-1 h-11 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {uploadingImages ? 'Uploading...' : isPending ? 'Saving...' : isEditing ? 'Update' : 'Save'}
               </button>
             </div>
           </div>
