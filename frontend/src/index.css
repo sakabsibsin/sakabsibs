@@ -116,3 +116,14 @@
 *::-webkit-scrollbar {
   display: none;
 }
+
+/* Prevent iOS Safari auto-zoom on input focus.
+   Safari zooms in whenever a focused input has font-size < 16px.
+   Overrides Tailwind's text-sm (14px) on mobile only. */
+@media screen and (max-width: 768px) {
+  input:not([type='range']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

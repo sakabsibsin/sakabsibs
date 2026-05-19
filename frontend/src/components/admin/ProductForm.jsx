@@ -473,7 +473,7 @@ export const ProductForm = ({ productId }) => {
                       )}
                       {allVariants?.[index]?.inStock === false ? (
                         <span className="text-[8px] tracking-[0.1em] uppercase font-medium text-red-500/70 border border-red-200 px-1.5 py-px leading-none">
-                          Out of Stock
+                           Stock Out 
                         </span>
                       ) : (
                         <span className="text-[8px] tracking-[0.1em] uppercase font-medium text-green-700/60 border border-green-200 px-1.5 py-px leading-none">
