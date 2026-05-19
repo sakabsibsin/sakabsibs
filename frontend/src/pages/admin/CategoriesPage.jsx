@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Breadcrumb } from "@/components/admin/Breadcrumb";
 import {
   useCategories,
@@ -98,7 +99,15 @@ export const CategoriesPage = () => {
 
       {/* Header */}
       <div className="border-b border-border/40 pb-6">
-        <h1 className="text-3xl font-serif tracking-wide mb-2">Categories</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <Link
+            to="/admin/dashboard"
+            className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <h1 className="text-3xl font-serif tracking-wide">Categories</h1>
+        </div>
         <p className="text-muted-foreground text-sm">
           Manage product categories. The code prefix is auto-generated from the first two letters of the name.
         </p>

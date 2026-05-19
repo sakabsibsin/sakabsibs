@@ -8,7 +8,13 @@ import { ArrowLeft, Plus, Trash2, Pencil } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Switch } from '@/components/ui/Switch';
 import { ImageUpload } from './ImageUpload';
-import { Breadcrumb } from './Breadcrumb';
+import {
+  AlertDialog, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter,
+  AlertDialogCancel, AlertDialogAction,
+} from '@/components/ui/AlertDialog';
+import { cn } from '@/lib/utils';
+import { getToken } from '@/lib/apiClient';
 import { useCreateProduct, useUpdateProduct, useProduct } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { API_URL } from '@/constants/config';
@@ -190,6 +196,7 @@ export const ProductForm = ({ productId }) => {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [deleteIndex, setDeleteIndex] = useState(null);
   const [uploadingImages, setUploadingImages] = useState(false);
 
   const uploadFiles = async (items) => {
@@ -201,7 +208,7 @@ export const ProductForm = ({ productId }) => {
         const res = await fetch(`${API_URL}/upload`, {
           method: 'POST',
           body: form,
-          credentials: 'include',
+          headers: { Authorization: `Bearer ${getToken()}` },
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -273,11 +280,22 @@ export const ProductForm = ({ productId }) => {
 
   const onSubmit = async (values) => {
     try {
-      // Step 1 — upload any new local File objects
       setUploadingImages(true);
-      let uploadedImages = values.images;
+      let uploadedImages;
       try {
+        // Upload base images + all variant images together before saving
         uploadedImages = await uploadFiles(values.images);
+        if (values.variants?.length) {
+          values = {
+            ...values,
+            variants: await Promise.all(
+              values.variants.map(async (variant) => ({
+                ...variant,
+                images: await uploadFiles(variant.images ?? []),
+              }))
+            ),
+          };
+        }
       } catch (err) {
         toast.error(err.message || 'One or more images failed to upload. Please try again.');
         return;
@@ -285,17 +303,7 @@ export const ProductForm = ({ productId }) => {
         setUploadingImages(false);
       }
 
-      // Step 2 — save product with final Cloudinary URLs
       const payload = { ...values, images: uploadedImages };
-
-      if (payload.variants?.length) {
-        payload.variants = await Promise.all(
-          payload.variants.map(async (variant) => ({
-            ...variant,
-            images: await uploadFiles(variant.images ?? []),
-          }))
-        );
-      }
 
       if (isEditing) {
         await update.mutateAsync({ id: productId, body: payload });
@@ -317,220 +325,221 @@ export const ProductForm = ({ productId }) => {
   const isPending = create.isPending || update.isPending;
 
   return (
-    <div className="max-w-3xl space-y-8">
-      <Breadcrumb items={[
-        { label: 'Dashboard', to: '/admin/dashboard' },
-        { label: 'Products', to: '/admin/products' },
-        { label: isEditing ? 'Edit Product' : 'Add Product' },
-      ]} />
+    <div className="py-2 max-w-5xl">
 
-      <div className="flex items-center gap-4">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-5">
         <Link
           to="/admin/products"
-          className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors"
+          className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div>
-          <h1 className="text-3xl font-serif tracking-wide">{isEditing ? 'Edit Product' : 'New Product'}</h1>
-        </div>
+        <h1 className="text-2xl font-serif tracking-wide flex-1 min-w-0">
+          {isEditing ? 'Edit Product' : 'New Product'}
+        </h1>
+        {isEditing && product && (
+          <div className="flex items-center gap-2 text-xs border border-border px-3 py-1.5 bg-muted/30 flex-shrink-0">
+            <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Code</span>
+            <span className="font-mono font-semibold">{product.productCode}</span>
+          </div>
+        )}
       </div>
 
-      {isEditing && product && (
-        <div className="flex items-center gap-3 text-xs border border-border px-4 py-2.5 bg-muted/30">
-          <span className="text-muted-foreground uppercase tracking-widest">Product Code</span>
-          <span className="font-mono font-semibold text-foreground text-sm">{product.productCode}</span>
-        </div>
-      )}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_272px] gap-4">
 
-      <div className="bg-card p-6 md:p-7 border border-border">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {/* ── Left column ─────────────────────── */}
+          <div className="space-y-4">
 
-          {/* Name + Base Price */}
-          <div>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 mb-4">Basic Details</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className={labelCls}>Product Name</label>
-              <input className={inputCls} placeholder="e.g. Silver Cuff Bracelet" {...register('name')} />
-              {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
-            </div>
-            <div>
-              <label className={labelCls}>
-                Base Price (₹){' '}
-                <span className="text-muted-foreground/50 normal-case tracking-normal">— used if no variants</span>
-              </label>
-              <input type="number" step="1" min="0" placeholder="0.00" className={inputCls} {...register('price')} />
-              {errors.price && <p className="text-xs text-destructive mt-1">{errors.price.message}</p>}
-            </div>
-          </div>
-
-          </div>
-
-          <hr className="border-border/40" />
-
-          {/* Category + Material */}
-          <div>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 mb-4">Organisation</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className={labelCls}>Category</label>
-              {categories.length === 0 ? (
-                <div className="border border-dashed border-border p-3 text-sm text-muted-foreground text-center">
-                  No categories. <Link to="/admin/categories" className="underline">Create one first.</Link>
+            {/* Name + Price */}
+            <div className="bg-card border border-border p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Product Name</label>
+                  <input className={inputCls} placeholder="e.g. Silver Cuff Bracelet" {...register('name')} />
+                  {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
                 </div>
-              ) : (
-                <select
-                  value={category}
-                  onChange={(e) => setValue('category', e.target.value, { shouldValidate: true })}
-                  className={inputCls}
-                >
-                  <option value="">Select category</option>
-                  {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-                </select>
-              )}
-              {errors.category && <p className="text-xs text-destructive mt-1">{errors.category.message}</p>}
-            </div>
-            <div>
-              <label className={labelCls}>
-                Material <span className="text-muted-foreground/50 normal-case tracking-normal">(optional)</span>
-              </label>
-              <input className={inputCls} placeholder="e.g. Sterling Silver, Gold Plated" {...register('material')} />
-            </div>
-          </div>
-
-          </div>
-
-          <hr className="border-border/40" />
-
-          {/* Description */}
-          <div>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 mb-4">Description</p>
-            <label className={labelCls}>Description</label>
-            <textarea
-              rows={4}
-              placeholder="Describe the product..."
-              className={`${inputCls} h-auto py-2 resize-none`}
-              {...register('description')}
-            />
-            {errors.description && <p className="text-xs text-destructive mt-1">{errors.description.message}</p>}
-          </div>
-
-          <hr className="border-border/40" />
-
-          {/* Images — hidden when variants exist (variant images take over) */}
-          <div>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 mb-4">Media</p>
-            <label className={labelCls}>Images</label>
-            {allVariants.length > 0 ? (
-              <p className="text-xs text-muted-foreground/55 border border-dashed border-border/50 px-4 py-4 text-center">
-                Product images are taken from the default variant when variants are added.
-              </p>
-            ) : (
-              <>
-                <ImageUpload
-                  images={images}
-                  onChange={(imgs) => setValue('images', imgs, { shouldValidate: true })}
-                />
-                {errors.images && <p className="text-xs text-destructive mt-1">{errors.images.message}</p>}
-              </>
-            )}
-          </div>
-
-          {/* Variants */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className={labelCls}>
-                Variants <span className="text-muted-foreground/50 normal-case tracking-normal">(optional)</span>
-              </label>
-              <button
-                type="button"
-                onClick={openAddModal}
-                className="inline-flex items-center gap-1.5 h-8 px-3 border border-border text-xs hover:bg-muted transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Variant
-              </button>
-            </div>
-
-            {variantFields.length === 0 ? (
-              <p className="text-xs text-muted-foreground/50 border border-dashed border-border/50 px-4 py-5 text-center">
-                No variants added. Click "Add Variant" to add color options with different prices and photos.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {variantFields.map((field, index) => (
-                  <div key={field.id} className="flex items-center justify-between px-3 py-2.5 border border-border/50 bg-muted/10">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm">
-                        {allVariants?.[index]?.color || <span className="text-muted-foreground/40 italic text-xs">Unnamed</span>}
-                      </span>
-                      {allVariants?.[index]?.isDefault && (
-                        <span className="text-[8px] tracking-[0.1em] uppercase font-medium text-primary/65 border border-primary/22 px-1.5 py-px leading-none">
-                          Default
-                        </span>
-                      )}
-                      {allVariants?.[index]?.inStock === false ? (
-                        <span className="text-[8px] tracking-[0.1em] uppercase font-medium text-red-500/70 border border-red-200 px-1.5 py-px leading-none">
-                           Stock Out 
-                        </span>
-                      ) : (
-                        <span className="text-[8px] tracking-[0.1em] uppercase font-medium text-green-700/60 border border-green-200 px-1.5 py-px leading-none">
-                          In Stock
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(index)}
-                        className="h-7 w-7 flex items-center justify-center text-muted-foreground/35 hover:text-foreground transition-colors"
-                        title="Edit variant"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeVariant(index)}
-                        className="h-7 w-7 flex items-center justify-center text-muted-foreground/35 hover:text-destructive transition-colors"
-                        title="Remove variant"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                <div>
+                  <label className={labelCls}>
+                    Base Price (₹){' '}
+                    <span className="text-muted-foreground/50 normal-case tracking-normal font-light">— used if no variants</span>
+                  </label>
+                  <input type="number" step="1" min="0" placeholder="0.00" className={inputCls} {...register('price')} />
+                  {errors.price && <p className="text-xs text-destructive mt-1">{errors.price.message}</p>}
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Category + Material */}
+            <div className="bg-card border border-border p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Category</label>
+                  {categories.length === 0 ? (
+                    <div className="border border-dashed border-border p-3 text-xs text-muted-foreground text-center">
+                      No categories. <Link to="/admin/categories" className="underline">Create one first.</Link>
+                    </div>
+                  ) : (
+                    <select
+                      value={category}
+                      onChange={(e) => setValue('category', e.target.value, { shouldValidate: true })}
+                      className={inputCls}
+                    >
+                      <option value="">Select category</option>
+                      {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                    </select>
+                  )}
+                  {errors.category && <p className="text-xs text-destructive mt-1">{errors.category.message}</p>}
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    Material <span className="text-muted-foreground/50 normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <input className={inputCls} placeholder="e.g. Sterling Silver, Gold Plated" {...register('material')} />
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="bg-card border border-border p-5">
+              <label className={labelCls}>Description</label>
+              <textarea
+                rows={4}
+                placeholder="Describe the product..."
+                className={`${inputCls} h-auto py-2 resize-none`}
+                {...register('description')}
+              />
+              {errors.description && <p className="text-xs text-destructive mt-1">{errors.description.message}</p>}
+            </div>
+
+            {/* Images */}
+            <div className="bg-card border border-border p-5">
+              <label className={labelCls}>Images</label>
+              {allVariants.length > 0 ? (
+                <p className="text-xs text-muted-foreground/55 border border-dashed border-border/50 px-4 py-4 text-center">
+                  Product images are taken from the default variant when variants are added.
+                </p>
+              ) : (
+                <>
+                  <ImageUpload
+                    images={images}
+                    onChange={(imgs) => setValue('images', imgs, { shouldValidate: true })}
+                  />
+                  {errors.images && <p className="text-xs text-destructive mt-1">{errors.images.message}</p>}
+                </>
+              )}
+            </div>
+
+            {/* Variants */}
+            <div className="bg-card border border-border p-5">
+              <div className="flex items-center justify-between mb-3">
+                <label className={labelCls}>
+                  Variants <span className="text-muted-foreground/50 normal-case tracking-normal">(optional)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={openAddModal}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 border border-border text-xs hover:bg-muted transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Variant
+                </button>
+              </div>
+              {variantFields.length === 0 ? (
+                <p className="text-xs text-muted-foreground/50 border border-dashed border-border/50 px-4 py-5 text-center">
+                  No variants added. Click "Add Variant" to add colour options with different prices and photos.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {variantFields.map((field, index) => (
+                    <div key={field.id} className="flex items-center justify-between px-3 py-2.5 border border-border/50 bg-muted/10">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm">
+                          {allVariants?.[index]?.color || <span className="text-muted-foreground/40 italic text-xs">Unnamed</span>}
+                        </span>
+                        {allVariants?.[index]?.isDefault && (
+                          <span className="text-[8px] tracking-[0.1em] uppercase font-medium text-primary/65 border border-primary/22 px-1.5 py-px leading-none">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        <div className="flex items-center justify-center w-10 h-8">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newInStock = allVariants[index]?.inStock !== false ? false : true;
+                              updateVariant(index, { ...allVariants[index], inStock: newInStock });
+                              const updated = allVariants.map((v, i) => i === index ? { ...v, inStock: newInStock } : v);
+                              setValue('inStock', updated.some(v => v.inStock !== false));
+                            }}
+                            title={allVariants?.[index]?.inStock === false ? 'Mark as In Stock' : 'Mark as Stock Out'}
+                            className="relative w-6 h-6 flex items-center justify-center focus:outline-none group"
+                          >
+                            <span className={cn(
+                              'absolute inset-0 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100',
+                              allVariants?.[index]?.inStock === false ? 'bg-red-400/20' : 'bg-green-400/20'
+                            )} />
+                            <span className={cn(
+                              'w-2.5 h-2.5 rounded-full ring-[2.5px] ring-offset-[2px] ring-offset-background transition-all duration-300 group-hover:scale-110',
+                              allVariants?.[index]?.inStock === false
+                                ? 'bg-red-500 ring-red-400/60'
+                                : 'bg-green-500 ring-green-400/60'
+                            )} />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-center w-10 h-8">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(index)}
+                            title="Edit variant"
+                            className="w-7 h-7 flex items-center justify-center text-primary/40 hover:text-primary transition-colors"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-center w-10 h-8">
+                          <button
+                            type="button"
+                            onClick={() => setDeleteIndex(index)}
+                            title="Remove variant"
+                            className="w-7 h-7 flex items-center justify-center text-red-400/50 hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <hr className="border-border/40" />
+          {/* ── Right sidebar ────────────────────── */}
+          <div className="space-y-4">
 
-          {/* Toggles */}
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 mb-4">Availability</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center justify-between border border-border px-4 py-3">
+            {/* Availability */}
+            <div className="bg-card border border-border p-5 space-y-0">
+              <div className="flex items-center justify-between py-1">
                 <div>
                   <p className="text-sm font-medium">In Stock</p>
-                  <p className="text-xs text-muted-foreground">
-                    {allVariants.length > 0
-                      ? 'Master switch — turn off to take the whole product offline'
-                      : 'Product is available to order'}
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    {allVariants.length > 0 ? 'Master switch — turns all variants off' : 'Available to order'}
                   </p>
                 </div>
                 <Switch
                   checked={inStock}
                   onCheckedChange={(v) => {
                     setValue('inStock', v);
-                    // Cascade to all variants so the edit form stays consistent
                     (allVariants ?? []).forEach((variant, i) => {
                       updateVariant(i, { ...variant, inStock: v });
                     });
                   }}
                 />
               </div>
-              <div className="flex items-center justify-between border border-border px-4 py-3">
+              <div className="border-t border-border/40 mt-3 pt-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Featured</p>
                   <p className="text-xs text-muted-foreground">Show on the homepage</p>
@@ -538,27 +547,28 @@ export const ProductForm = ({ productId }) => {
                 <Switch checked={featured} onCheckedChange={(v) => setValue('featured', v)} />
               </div>
             </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="submit"
+                disabled={uploadingImages || isPending}
+                className="h-11 w-full bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {uploadingImages ? 'Uploading...' : isPending ? 'Saving...' : isEditing ? 'Update Product' : 'Create Product'}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/admin/products')}
+                className="h-11 w-full border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-4 pt-2 border-t border-border">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/products')}
-              className="h-12 px-8 border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
-            >
-              Cancel
-            </button>
-                        <button
-              type="submit"
-              disabled={uploadingImages || isPending}
-              className="h-12 px-8 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            >
-              {uploadingImages ? 'Uploading images...' : isPending ? 'Saving...' : isEditing ? 'Update Product' : 'Create Product'}
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+      </form>
 
       <VariantModal
         open={modalOpen}
@@ -566,6 +576,23 @@ export const ProductForm = ({ productId }) => {
         initialData={editingIndex !== null ? allVariants?.[editingIndex] : null}
         onSave={handleSaveVariant}
       />
+
+      <AlertDialog open={deleteIndex !== null} onOpenChange={(v) => { if (!v) setDeleteIndex(null); }}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete variant?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {deleteIndex !== null && allVariants?.[deleteIndex]?.color
+              ? `"${allVariants[deleteIndex].color}" will be permanently removed from this product.`
+              : 'This variant will be permanently removed from this product.'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setDeleteIndex(null)}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { removeVariant(deleteIndex); setDeleteIndex(null); }}>
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialog>
     </div>
   );
 };

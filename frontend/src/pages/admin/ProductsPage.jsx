@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, SquarePen, Trash2, Search, X } from "lucide-react";
+import { Plus, SquarePen, Trash2, Search, X, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   useProducts,
@@ -74,15 +74,23 @@ export const ProductsPage = () => {
     <div className="flex flex-col h-[calc(100vh-56px-1rem)] min-h-0 overflow-hidden">
       {/* ── Top bar ──────────────────────────────── */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-baseline gap-2.5">
-          <h1 className="font-serif text-xl font-light tracking-tight">
-            Products
-          </h1>
-          {data && (
-            <span className="text-xs font-light text-muted-foreground/50 tabular-nums">
-              {filtered.length}/{data.total}
-            </span>
-          )}
+        <div className="flex items-center gap-3">
+          <Link
+            to="/admin/dashboard"
+            className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="flex items-baseline gap-2.5">
+            <h1 className="font-serif text-xl font-light tracking-tight">
+              Products
+            </h1>
+            {data && (
+              <span className="text-xs font-light text-muted-foreground/50 tabular-nums">
+                {filtered.length}/{data.total}
+              </span>
+            )}
+          </div>
         </div>
         <Link
           to="/admin/products/new"

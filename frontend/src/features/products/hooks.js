@@ -64,7 +64,10 @@ export const useToggleStock = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, inStock }) => api.toggleProductStock(id, inStock),
-    onSuccess: () => qc.invalidateQueries({ queryKey: productKeys.lists() }),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: productKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: productKeys.lists() });
+    },
   });
 };
 

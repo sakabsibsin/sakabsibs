@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useUpdateSetting } from '@/features/auth/hooks';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -53,7 +55,15 @@ export const SettingsPage = () => {
       <Breadcrumb items={[{ label: 'Dashboard', to: '/admin/dashboard' }, { label: 'Settings' }]} />
 
       <div>
-        <h1 className="text-3xl font-serif tracking-wide mb-2">Settings</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <Link
+            to="/admin/dashboard"
+            className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <h1 className="text-3xl font-serif tracking-wide">Settings</h1>
+        </div>
         <p className="text-muted-foreground text-sm">Configure your store settings.</p>
       </div>
 

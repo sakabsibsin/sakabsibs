@@ -4,8 +4,12 @@ import { toast } from 'sonner';
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
-const getPreviewUrl = (item) =>
-  typeof item === 'string' ? item : URL.createObjectURL(item);
+const previewCache = new WeakMap();
+const getPreviewUrl = (item) => {
+  if (typeof item === 'string') return item;
+  if (!previewCache.has(item)) previewCache.set(item, URL.createObjectURL(item));
+  return previewCache.get(item);
+};
 
 export const ImageUpload = ({ images = [], onChange, maxImages = 8 }) => {
   const inputRef = useRef(null);
@@ -35,8 +39,10 @@ export const ImageUpload = ({ images = [], onChange, maxImages = 8 }) => {
     <div className="space-y-3">
       <div className="grid grid-cols-4 gap-2">
         {images.map((item, i) => (
-          <div key={i} className="relative aspect-square bg-muted border border-border overflow-hidden">
-            <img src={getPreviewUrl(item)} alt="" className="w-full h-full object-cover" />
+          <div key={i} className="relative aspect-square">
+            <div className="w-full h-full bg-muted border border-border overflow-hidden">
+              <img src={getPreviewUrl(item)} alt="" className="w-full h-full object-cover" />
+            </div>
             <button
               type="button"
               onClick={() => onChange(images.filter((_, j) => j !== i))}

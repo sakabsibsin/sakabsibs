@@ -64,13 +64,10 @@ export const createProduct = async (body) => {
 };
 
 export const updateProduct = async (id, body) => {
-  // One-way auto-sync only: if every variant is explicitly OOS, force master offline too.
-  // Never force it back ON — respect whatever the admin set on the master switch.
   let finalBody = body;
   if (Array.isArray(body.variants) && body.variants.length > 0) {
-    if (body.variants.every((v) => v.inStock === false)) {
-      finalBody = { ...body, inStock: false };
-    }
+    // Master always mirrors variant states: any variant in stock → master on, all OOS → master off
+    finalBody = { ...body, inStock: body.variants.some((v) => v.inStock !== false) };
   }
   return Product.findByIdAndUpdate(id, finalBody, { new: true, runValidators: true });
 };
