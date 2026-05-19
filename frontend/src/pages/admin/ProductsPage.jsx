@@ -134,7 +134,7 @@ export const ProductsPage = () => {
         Active tab: thick bottom border that overlaps the container's
         bottom border via -mb-px, giving a clean underline-tab effect.
       */}
-      <div className="cat-tabs-scroll flex overflow-x-auto border-b border-border/35 mb-0">
+      <div className="cat-tabs-scroll flex overflow-x-auto border-b border-border/35 mb-0" style={{ touchAction: 'pan-x' }}>
         {chips.map((cat) => (
           <button
             key={cat}
@@ -231,7 +231,7 @@ export const ProductsPage = () => {
                       {product.name}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-[10px] text-muted-foreground/35 font-light">
+                      <span className="text-[10px] text-muted-foreground/70 font-mono">
                         {product.productCode}
                       </span>
                       {product.featured && (
