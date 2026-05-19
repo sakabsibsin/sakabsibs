@@ -326,14 +326,13 @@ export const ProductForm = ({ productId }) => {
 
       <div className="flex items-center gap-4">
         <Link
-          to="/admin/dashboard"
+          to="/admin/products"
           className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
           <h1 className="text-3xl font-serif tracking-wide">{isEditing ? 'Edit Product' : 'New Product'}</h1>
-          <p className="text-muted-foreground text-sm">{isEditing ? 'Update product details.' : 'Add a new piece to your catalog.'}</p>
         </div>
       </div>
 
@@ -545,7 +544,7 @@ export const ProductForm = ({ productId }) => {
           <div className="flex items-center gap-4 pt-2 border-t border-border">
             <button
               type="button"
-              onClick={() => navigate('/admin/dashboard')}
+              onClick={() => navigate('/admin/products')}
               className="h-12 px-8 border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
             >
               Cancel
