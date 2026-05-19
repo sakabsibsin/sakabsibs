@@ -81,8 +81,10 @@ export const toggleStock = (id, inStock) =>
   Product.findByIdAndUpdate(
     id,
     inStock
-      ? { inStock: true,  demandCount: 0, 'variants.$[].demandCount': 0 }
-      : { inStock: false },
+      // Restore whole product: master ON, all variants ON, demand reset
+      ? { inStock: true, demandCount: 0, 'variants.$[].inStock': true, 'variants.$[].demandCount': 0 }
+      // Take whole product offline: master OFF, all variants OFF too
+      : { inStock: false, 'variants.$[].inStock': false },
     { new: true }
   );
 

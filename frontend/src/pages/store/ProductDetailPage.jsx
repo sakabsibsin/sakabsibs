@@ -299,31 +299,42 @@ export const ProductDetailPage = () => {
                 Variants
               </p>
               <div className="variant-pills flex overflow-x-auto gap-2 pb-0.5">
-                {variants.map((v, i) => (
-                  <button
-                    key={i}
-                    onClick={() => selectVariant(i)}
-                    className={cn(
-                      'relative flex-shrink-0 h-9 px-4 border text-xs font-light whitespace-nowrap overflow-hidden transition-colors duration-200',
-                      v.inStock === false
-                        ? selectedVariant === i
-                          ? 'border-red-400 text-red-500'
-                          : 'border-red-200 text-red-400 hover:border-red-400 hover:text-red-500'
-                        : selectedVariant === i
-                          ? 'border-foreground text-foreground'
-                          : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
-                    )}
-                  >
-                    {selectedVariant === i && (
-                      <motion.span
-                        layoutId="variant-active-bg"
-                        className="absolute inset-0 bg-muted/30"
-                        transition={{ type: 'spring', stiffness: 350, damping: 32 }}
-                      />
-                    )}
-                    <span className="relative z-10">{v.color}</span>
-                  </button>
-                ))}
+                {variants.map((v, i) => {
+                  const isOos = v.inStock === false;
+                  const isSelected = selectedVariant === i;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => selectVariant(i)}
+                      className={cn(
+                        'relative flex-shrink-0 h-9 px-4 border text-xs font-light whitespace-nowrap overflow-hidden transition-colors duration-200',
+                        isOos
+                          ? isSelected
+                            ? 'border-red-500 bg-red-50 text-red-600'
+                            : 'border-red-300 bg-red-50/60 text-red-500 hover:border-red-500 hover:text-red-600'
+                          : isSelected
+                            ? 'border-foreground text-foreground'
+                            : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
+                      )}
+                    >
+                      {isSelected && !isOos && (
+                        <motion.span
+                          layoutId="variant-active-bg"
+                          className="absolute inset-0 bg-muted/30"
+                          transition={{ type: 'spring', stiffness: 350, damping: 32 }}
+                        />
+                      )}
+                      <span className="relative z-10 flex items-center gap-1.5">
+                        {v.color}
+                        {isOos && (
+                          <span className="text-[9px] uppercase tracking-wider font-semibold text-red-500/80">
+                            · Stock Out
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -348,8 +359,10 @@ export const ProductDetailPage = () => {
             <DetailRow
               label="Status"
               value={
-                <span className={isCurrentlyAvailable ? 'text-green-700' : 'text-muted-foreground/50'}>
-                  {isCurrentlyAvailable ? 'In Stock' : 'Out of Stock'}
+                <span className={isCurrentlyAvailable
+                  ? 'text-green-700'
+                  : 'text-red-600 font-medium'}>
+                  {isCurrentlyAvailable ? 'In Stock' : 'Stock Out'}
                 </span>
               }
             />

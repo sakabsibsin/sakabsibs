@@ -520,7 +520,16 @@ export const ProductForm = ({ productId }) => {
                       : 'Product is available to order'}
                   </p>
                 </div>
-                <Switch checked={inStock} onCheckedChange={(v) => setValue('inStock', v)} />
+                <Switch
+                  checked={inStock}
+                  onCheckedChange={(v) => {
+                    setValue('inStock', v);
+                    // Cascade to all variants so the edit form stays consistent
+                    (allVariants ?? []).forEach((variant, i) => {
+                      updateVariant(i, { ...variant, inStock: v });
+                    });
+                  }}
+                />
               </div>
               <div className="flex items-center justify-between border border-border px-4 py-3">
                 <div>
