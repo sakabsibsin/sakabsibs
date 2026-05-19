@@ -80,7 +80,7 @@ export const ProductsPage = () => {
   const chips = ["ALL", ...categories.map((c) => c.name)];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px-1rem)] min-h-0 overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-56px-2.5rem)] min-h-0 overflow-hidden">
       {/* ── Top bar ──────────────────────────────── */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -152,7 +152,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* ── Products ─────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto min-h-0 mt-0 pb-20">
+      <div className="flex-1 overflow-y-auto min-h-0 mt-0 pb-28">
         {isLoading ? (
           <SkeletonRows />
         ) : filtered.length === 0 ? (
