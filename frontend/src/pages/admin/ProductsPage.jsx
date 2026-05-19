@@ -117,7 +117,7 @@ export const ProductsPage = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, code or material..."
-          className="w-full h-10 pl-10 pr-9 text-[13px] bg-background border border-border/50 focus:border-foreground/20 placeholder:text-muted-foreground/28 focus:outline-none transition-colors duration-200"
+          className="w-full h-8 pl-10 pr-9 text-[12px] bg-background border border-border/50 focus:border-foreground/20 placeholder:text-muted-foreground/28 focus:outline-none transition-colors duration-200"
         />
         {search && (
           <button
@@ -140,7 +140,7 @@ export const ProductsPage = () => {
             key={cat}
             onClick={() => setActiveCategory(cat)}
             className={cn(
-              "flex-shrink-0 h-7 px-3.5 text-[10px] tracking-[0.18em] uppercase font-medium whitespace-nowrap transition-all duration-150",
+              "flex-shrink-0 h-6 px-3 text-[9px] tracking-[0.18em] uppercase font-medium whitespace-nowrap transition-all duration-150",
               activeCategory === cat
                 ? "bg-foreground text-background"
                 : "text-muted-foreground/55 hover:text-foreground border border-border hover:border-foreground/40",
@@ -176,12 +176,12 @@ export const ProductsPage = () => {
             {/* sticky: h-14 = 56 px (AdminSidebar height) */}
             <thead className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
               <tr className="border-b border-border/35">
-                <th className="w-[60px] pl-0 pr-2 py-2 text-left">
+                <th className="w-[60px] pl-0 pr-2 py-1.5 text-left">
                   <span className="text-[9px] tracking-[0.28em] uppercase font-medium text-muted-foreground/70">
                     IMG
                   </span>
                 </th>
-                <th className="px-2 py-2 text-left">
+                <th className="px-2 py-1.5 text-left">
                   <span className="text-[9px] tracking-[0.28em] uppercase font-medium text-muted-foreground/70">
                     NAME
                   </span>
