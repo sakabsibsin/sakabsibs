@@ -324,14 +324,7 @@ export const ProductDetailPage = () => {
                           transition={{ type: 'spring', stiffness: 350, damping: 32 }}
                         />
                       )}
-                      <span className="relative z-10 flex items-center gap-1.5">
-                        {v.color}
-                        {isOos && (
-                          <span className="text-[9px] uppercase tracking-wider font-semibold text-red-500/80">
-                            · Stock Out
-                          </span>
-                        )}
-                      </span>
+                      <span className="relative z-10">{v.color}</span>
                     </button>
                   );
                 })}
