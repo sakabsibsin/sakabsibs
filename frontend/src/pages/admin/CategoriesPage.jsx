@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, ArrowLeft, Tag } from "lucide-react";
@@ -240,44 +241,60 @@ export const CategoriesPage = () => {
       </div>
 
       {/* Edit modal */}
-      {editingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditingId(null)} />
-          <div className="relative z-10 w-full max-w-sm bg-background border border-border shadow-xl p-6 space-y-5">
-            <div>
-              <h2 className="font-serif text-xl font-light">Rename Category</h2>
-              <p className="text-xs text-muted-foreground/55 mt-1">
-                Renaming will update all products in this category.
-              </p>
-            </div>
-            <input
-              autoFocus
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleUpdate(categories.find((c) => c.id === editingId));
-                if (e.key === "Escape") setEditingId(null);
-              }}
-              className="flex h-10 w-full border border-border bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground"
-            />
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setEditingId(null)}
-                className="flex-1 h-10 border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleUpdate(categories.find((c) => c.id === editingId))}
-                disabled={update.isPending || !editName.trim()}
-                className="flex-1 h-10 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              >
-                {update.isPending ? "Saving…" : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {editingId && (
+          <motion.div
+            key="edit-modal-overlay"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditingId(null)} />
+            <motion.div
+              key="edit-modal-card"
+              className="relative z-10 w-full max-w-sm bg-background border border-border shadow-xl p-6 space-y-5"
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 28, mass: 0.7 }}
+            >
+              <div>
+                <h2 className="font-serif text-xl font-light">Rename Category</h2>
+                <p className="text-xs text-muted-foreground/55 mt-1">
+                  Renaming will update all products in this category.
+                </p>
+              </div>
+              <input
+                autoFocus
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleUpdate(categories.find((c) => c.id === editingId));
+                  if (e.key === "Escape") setEditingId(null);
+                }}
+                className="flex h-10 w-full border border-border bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground"
+              />
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setEditingId(null)}
+                  className="flex-1 h-10 border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleUpdate(categories.find((c) => c.id === editingId))}
+                  disabled={update.isPending || !editName.trim()}
+                  className="flex-1 h-10 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  {update.isPending ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

@@ -254,6 +254,7 @@ export const ProductsPage = () => {
                     <div className="flex flex-col items-center gap-1">
                       <Switch
                         checked={product.inStock}
+                        disabled={toggleStock.isPending && toggleStock.variables?.id === product.id}
                         onCheckedChange={() =>
                           toggleStock.mutate({
                             id: product.id,
@@ -263,9 +264,7 @@ export const ProductsPage = () => {
                       />
                       {product.variants?.length > 0 && (
                         <span className="text-[9px] text-muted-foreground/40 tabular-nums leading-none">
-                          {!product.inStock
-                            ? 'offline'
-                            : `${product.variants.filter((v) => v.inStock !== false).length}/${product.variants.length}`}
+                          {`${product.variants.filter((v) => v.inStock !== false).length}/${product.variants.length}`}
                         </span>
                       )}
                     </div>

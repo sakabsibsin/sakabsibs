@@ -24,7 +24,7 @@ export const CatalogPage = () => {
   const debouncedSearch = useDebounce(search, 350);
 
   const { data: categoriesData } = useCategories();
-  const { data, isLoading } = useProducts({
+  const { data, isLoading, isError, refetch } = useProducts({
     category: category || undefined,
     search: debouncedSearch || undefined,
     limit: 100,
@@ -86,7 +86,7 @@ export const CatalogPage = () => {
       {/* Sort + result count row */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <motion.p
-          key={`${products.length}-${category}`}
+          key={`${products.length}-${category}-${sort}`}
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
@@ -143,7 +143,7 @@ export const CatalogPage = () => {
       </div>
 
       {/* Product Grid */}
-      <ProductGrid products={products} isLoading={isLoading} />
+      <ProductGrid products={products} isLoading={isLoading} isError={isError} onRetry={refetch} />
     </motion.div>
   );
 };

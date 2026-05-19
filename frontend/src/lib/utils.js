@@ -20,7 +20,7 @@ export const formatPrice = (price) =>
 export const getProductThumbnail = (product) => {
   if (product.variants?.length > 0) {
     const def = product.variants.find((v) => v.isDefault) ?? product.variants[0];
-    return def?.images?.[0] ?? '';
+    return def?.images?.[0] || product.images?.[0] || '';
   }
   return product.images?.[0] ?? '';
 };

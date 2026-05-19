@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,8 +46,8 @@ const schema = z.object({
   }
 });
 
-const inputCls = 'flex h-11 w-full border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground disabled:opacity-50';
-const labelCls = 'block uppercase tracking-widest text-xs mb-1.5 text-foreground';
+const inputCls = 'flex h-10 w-full border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground disabled:opacity-50';
+const labelCls = 'block uppercase tracking-widest text-[10px] mb-1 text-foreground/80';
 
 /* ── Variant modal ────────────────────────────────── */
 const variantSchema = z.object({
@@ -325,10 +326,15 @@ export const ProductForm = ({ productId }) => {
   const isPending = create.isPending || update.isPending;
 
   return (
-    <div className="py-2 max-w-5xl">
+    <motion.div
+      className="py-2 max-w-5xl"
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 28, mass: 0.7 }}
+    >
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-4">
         <Link
           to="/admin/products"
           className="h-9 w-9 border border-border flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0"
@@ -347,33 +353,24 @@ export const ProductForm = ({ productId }) => {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_272px] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-3">
 
           {/* ── Left column ─────────────────────── */}
-          <div className="space-y-4">
+          <div className="space-y-3">
 
-            {/* Name + Price */}
-            <div className="bg-card border border-border p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Name + Price + Category + Material — one card */}
+            <div className="bg-card border border-border p-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Product Name</label>
                   <input className={inputCls} placeholder="e.g. Silver Cuff Bracelet" {...register('name')} />
                   {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
                 </div>
                 <div>
-                  <label className={labelCls}>
-                    Base Price (₹){' '}
-                    <span className="text-muted-foreground/50 normal-case tracking-normal font-light">— used if no variants</span>
-                  </label>
+                  <label className={labelCls}>Base Price (₹)</label>
                   <input type="number" step="1" min="0" placeholder="0.00" className={inputCls} {...register('price')} />
                   {errors.price && <p className="text-xs text-destructive mt-1">{errors.price.message}</p>}
                 </div>
-              </div>
-            </div>
-
-            {/* Category + Material */}
-            <div className="bg-card border border-border p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Category</label>
                   {categories.length === 0 ? (
@@ -393,19 +390,17 @@ export const ProductForm = ({ productId }) => {
                   {errors.category && <p className="text-xs text-destructive mt-1">{errors.category.message}</p>}
                 </div>
                 <div>
-                  <label className={labelCls}>
-                    Material <span className="text-muted-foreground/50 normal-case tracking-normal">(optional)</span>
-                  </label>
-                  <input className={inputCls} placeholder="e.g. Sterling Silver, Gold Plated" {...register('material')} />
+                  <label className={labelCls}>Material <span className="normal-case tracking-normal text-muted-foreground/50">(optional)</span></label>
+                  <input className={inputCls} placeholder="e.g. Sterling Silver" {...register('material')} />
                 </div>
               </div>
             </div>
 
             {/* Description */}
-            <div className="bg-card border border-border p-5">
+            <div className="bg-card border border-border p-4">
               <label className={labelCls}>Description</label>
               <textarea
-                rows={4}
+                rows={3}
                 placeholder="Describe the product..."
                 className={`${inputCls} h-auto py-2 resize-none`}
                 {...register('description')}
@@ -414,7 +409,7 @@ export const ProductForm = ({ productId }) => {
             </div>
 
             {/* Images */}
-            <div className="bg-card border border-border p-5">
+            <div className="bg-card border border-border p-4">
               <label className={labelCls}>Images</label>
               {allVariants.length > 0 ? (
                 <p className="text-xs text-muted-foreground/55 border border-dashed border-border/50 px-4 py-4 text-center">
@@ -432,7 +427,7 @@ export const ProductForm = ({ productId }) => {
             </div>
 
             {/* Variants */}
-            <div className="bg-card border border-border p-5">
+            <div className="bg-card border border-border p-4">
               <div className="flex items-center justify-between mb-3">
                 <label className={labelCls}>
                   Variants <span className="text-muted-foreground/50 normal-case tracking-normal">(optional)</span>
@@ -514,14 +509,19 @@ export const ProductForm = ({ productId }) => {
                   ))}
                 </div>
               )}
+              {variantFields.length > 0 && !allVariants?.some((v) => v.isDefault) && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 mt-2">
+                  No default variant set — the first variant will be shown in the shop.
+                </p>
+              )}
             </div>
           </div>
 
           {/* ── Right sidebar ────────────────────── */}
-          <div className="space-y-4">
+          <div className="space-y-3">
 
             {/* Availability */}
-            <div className="bg-card border border-border p-5 space-y-0">
+            <div className="bg-card border border-border p-4 space-y-0">
               <div className="flex items-center justify-between py-1">
                 <div>
                   <p className="text-sm font-medium">In Stock</p>
@@ -549,7 +549,7 @@ export const ProductForm = ({ productId }) => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 pb-4">
               <button
                 type="button"
                 onClick={() => navigate('/admin/products')}
@@ -593,6 +593,6 @@ export const ProductForm = ({ productId }) => {
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialog>
-    </div>
+    </motion.div>
   );
 };

@@ -55,7 +55,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
     const required = ['fullName', 'phone', 'houseName', 'street', 'city', 'district', 'state', 'pincode'];
     const next = {};
     required.forEach((k) => { if (!form[k].trim()) next[k] = 'Required'; });
-    if (form.phone && !/^\d{10}$/.test(form.phone.replace(/\s/g, ''))) next.phone = 'Enter a valid 10-digit number';
+    if (form.phone && !/^[6-9]\d{9}$/.test(form.phone.replace(/\s/g, ''))) next.phone = 'Enter a valid 10-digit mobile number';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -248,8 +248,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
             {/* Footer */}
             <div className="px-6 pb-6 pt-4 border-t border-border/40 shrink-0">
               <button
-                type="submit"
-                form=""
+                type="button"
                 onClick={handleSubmit}
                 className="w-full flex items-center justify-center gap-3 bg-foreground text-background h-13 hover:bg-foreground/88 active:scale-[0.985] transition-all duration-200"
                 style={{ minHeight: '52px' }}
