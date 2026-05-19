@@ -43,10 +43,9 @@ const flattenOos = (products) => {
   return rows.sort((a, b) => b.demand - a.demand);
 };
 
-/* ── grid shared by header + every data row ─────
-   col widths: img | product | code | demand | restock
-   min-w on wrapper prevents collapse on small screens ── */
-const GRID = 'grid grid-cols-[44px_1fr_80px_52px_52px] items-center gap-x-2 px-4';
+/* mobile: 2 cols — product+thumb | demand+button
+   md+:    4 cols — product | code | demand | button */
+const GRID = 'grid grid-cols-[1fr_auto] md:grid-cols-[1fr_76px_52px_44px] items-center gap-x-3 px-4';
 
 export const RestockPage = () => {
   const qc = useQueryClient();
@@ -110,12 +109,16 @@ export const RestockPage = () => {
 
   /* ── Table header ───────────────────────────── */
   const THead = () => (
-    <div className={cn(GRID, 'py-2.5 bg-muted/50 border-b border-border sticky top-0 z-10')}>
-      <div />
+    <div className={cn(GRID, 'py-2.5 bg-muted/50 border-b border-border')}>
       <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold">Product</span>
+      {/* desktop-only columns */}
       <span className="hidden md:block text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">Code</span>
-      <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">Demand</span>
-      <div />
+      <span className="hidden md:block text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">Demand</span>
+      {/* last col: "Action" on mobile, "Stock" on desktop */}
+      <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">
+        <span className="md:hidden">Action</span>
+        <span className="hidden md:inline">Stock</span>
+      </span>
     </div>
   );
 
@@ -128,45 +131,47 @@ export const RestockPage = () => {
         dim ? 'opacity-40 hover:opacity-60' : 'hover:bg-muted/20'
       )}
     >
-      {/* Thumbnail */}
-      <div className="h-11 w-11 shrink-0 overflow-hidden bg-muted/60">
-        {item.thumbnail
-          ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
-          : <div className="w-full h-full" />}
+      {/* Thumbnail + product info in one cell */}
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="h-10 w-10 shrink-0 overflow-hidden bg-muted/60">
+          {item.thumbnail
+            ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
+            : <div className="w-full h-full" />}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-foreground leading-snug truncate">{item.name}</p>
+          {item.variant_label && (
+            <p className="text-xs text-muted-foreground/65 leading-tight truncate mt-0.5">{item.variant_label}</p>
+          )}
+          <p className="text-[10px] text-muted-foreground/40 leading-tight truncate mt-0.5">
+            {item.category}{item.code && <span className="md:hidden"> · {item.code}</span>}
+          </p>
+        </div>
       </div>
 
-      {/* Product name + variant + category */}
-      <div className="min-w-0">
-        <p className="text-[13px] font-medium text-foreground leading-snug truncate">{item.name}</p>
-        {item.variant_label && (
-          <p className="text-xs text-muted-foreground/65 leading-tight truncate mt-0.5">{item.variant_label}</p>
-        )}
-        <p className="text-[10px] text-muted-foreground/40 leading-tight truncate mt-0.5">
-          {item.category}
-          {item.code && <span className="md:hidden"> · {item.code}</span>}
-        </p>
-      </div>
-
-      {/* Code — md+ only */}
+      {/* Code — desktop only */}
       <div className="hidden md:flex items-center justify-center">
-        <span className="text-[11px] font-mono text-muted-foreground/55 tabular-nums text-center">{item.code || '—'}</span>
+        <span className="text-[11px] font-mono text-muted-foreground/55 tabular-nums">{item.code || '—'}</span>
       </div>
 
-      {/* Demand */}
-      <div className="flex items-center justify-center">
+      {/* Demand — desktop only */}
+      <div className="hidden md:flex items-center justify-center">
         {item.demand > 0
           ? <span className="text-sm font-bold text-amber-600 tabular-nums leading-none">{item.demand}</span>
           : <span className="text-muted-foreground/20 text-sm">—</span>
         }
       </div>
 
-      {/* Restock button — stop propagation so row click doesn't also fire */}
-      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+      {/* Last col: demand+button on mobile, button-only on desktop */}
+      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+        {item.demand > 0 && (
+          <span className="md:hidden text-sm font-bold text-amber-600 tabular-nums leading-none">{item.demand}</span>
+        )}
         <button
           onClick={() => setPendingRestock(item)}
           disabled={isPending}
           title="Mark as in stock"
-          className="h-8 w-8 rounded-full border border-green-300 flex items-center justify-center text-green-500 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
+          className="h-7 w-7 rounded-full border border-green-300 flex items-center justify-center text-green-500 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
         >
           <RotateCcw className="h-3.5 w-3.5" />
         </button>
@@ -176,26 +181,31 @@ export const RestockPage = () => {
 
   /* ── Loading skeleton ───────────────────────── */
   const LoadingSkeleton = () => (
-    <div className="border border-border bg-card overflow-x-auto">
-      <div style={{ minWidth: 400 }}>
-        <div className={cn(GRID, 'py-2.5 bg-muted/50 border-b border-border')}>
-          <div /><Skeleton className="h-2 w-14" /><Skeleton className="h-2 w-10 mx-auto" />
-          <Skeleton className="h-2 w-10 mx-auto" /><Skeleton className="h-2 w-10 mx-auto" />
-        </div>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className={cn(GRID, 'py-3 border-b border-border/20 last:border-0')}>
-            <Skeleton className="h-11 w-11" />
-            <div className="space-y-1.5 min-w-0">
-              <Skeleton className="h-3 w-36" />
-              <Skeleton className="h-2.5 w-20" />
-              <Skeleton className="h-2 w-16" />
-            </div>
-            <div className="flex justify-center"><Skeleton className="h-2.5 w-14" /></div>
-            <div className="flex justify-center"><Skeleton className="h-4 w-6" /></div>
-            <div className="flex justify-center"><Skeleton className="h-8 w-8 rounded-full" /></div>
-          </div>
-        ))}
+    <div className="border border-border bg-card">
+      <div className={cn(GRID, 'py-2.5 bg-muted/50 border-b border-border')}>
+        <Skeleton className="h-2 w-14" />
+        <Skeleton className="hidden md:block h-2 w-10 mx-auto" />
+        <Skeleton className="hidden md:block h-2 w-10 mx-auto" />
+        <Skeleton className="h-2 w-10 ml-auto" />
       </div>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className={cn(GRID, 'py-3 border-b border-border/20 last:border-0')}>
+          <div className="flex items-center gap-3 min-w-0">
+            <Skeleton className="h-10 w-10 shrink-0" />
+            <div className="space-y-1.5 min-w-0 flex-1">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-2.5 w-16" />
+              <Skeleton className="h-2 w-20" />
+            </div>
+          </div>
+          <div className="hidden md:flex justify-center"><Skeleton className="h-2.5 w-12" /></div>
+          <div className="hidden md:flex justify-center"><Skeleton className="h-4 w-5" /></div>
+          <div className="flex items-center justify-end gap-2">
+            <Skeleton className="h-4 w-5 md:hidden" />
+            <Skeleton className="h-7 w-7 rounded-full" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 
@@ -284,20 +294,15 @@ export const RestockPage = () => {
         </div>
       )}
 
-      {/* Table — overflow-x-auto so it scrolls rather than clips on narrow screens */}
+
       {!isLoading && filtered.length > 0 && (
-        <div className="border border-border bg-card overflow-x-auto">
-          <div style={{ minWidth: 400 }}>
-            <THead />
-
-            {withDemand.map((item) => <Row key={item.key} item={item} dim={false} />)}
-
-            {withDemand.length > 0 && noDemand.length > 0 && (
-              <div className="border-b border-border/40" />
-            )}
-
-            {noDemand.map((item) => <Row key={item.key} item={item} dim={!isFiltered} />)}
-          </div>
+        <div className="border border-border bg-card">
+          <THead />
+          {withDemand.map((item) => <Row key={item.key} item={item} dim={false} />)}
+          {withDemand.length > 0 && noDemand.length > 0 && (
+            <div className="border-b border-border/40" />
+          )}
+          {noDemand.map((item) => <Row key={item.key} item={item} dim={!isFiltered} />)}
         </div>
       )}
 
