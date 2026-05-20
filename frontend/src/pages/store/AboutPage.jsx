@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { STORE_NAME } from '@/constants/config';
@@ -8,7 +9,9 @@ const fadeUp = (delay = 0) => ({
   transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1], delay },
 });
 
-export const AboutPage = () => (
+export const AboutPage = () => {
+  useEffect(() => { document.title = 'About — Sakab Sibs'; }, []);
+  return (
   <div className="container-store py-10 sm:py-16 max-w-3xl">
     <motion.div {...fadeUp(0)} className="mb-8 space-y-3">
       <p className="label-overline">Our Story</p>
@@ -50,4 +53,5 @@ export const AboutPage = () => (
       </Link>
     </motion.div>
   </div>
-);
+  );
+};

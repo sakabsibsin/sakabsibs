@@ -56,6 +56,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
     const next = {};
     required.forEach((k) => { if (!form[k].trim()) next[k] = 'Required'; });
     if (form.phone && !/^[6-9]\d{9}$/.test(form.phone.replace(/\s/g, ''))) next.phone = 'Enter a valid 10-digit mobile number';
+    if (form.pincode && !/^\d{6}$/.test(form.pincode.replace(/\s/g, ''))) next.pincode = 'Enter a valid 6-digit pincode';
     setErrors(next);
     return Object.keys(next).length === 0;
   };

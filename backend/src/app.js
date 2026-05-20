@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import { connectDB } from './config/database.js';
 import { env } from './config/env.js';
@@ -24,7 +23,6 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma'],
 }));
-app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 

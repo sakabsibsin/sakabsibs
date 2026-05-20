@@ -93,15 +93,28 @@ export const SettingsPage = () => {
           </div>
           <div className="border-t border-border pt-5">
             <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-widest">Message Preview</p>
-            <div className="bg-muted/50 border border-border p-4 text-xs font-mono text-muted-foreground leading-relaxed whitespace-pre-wrap">{`Hello! I'm interested in ordering this product.
+            <div className="bg-muted/50 border border-border p-4 text-xs font-mono text-muted-foreground leading-relaxed whitespace-pre">{`Hello 👋
+I'm interested in this product.
 
-🛍️ Product: [Product Name]
-🎨 Variant: [Selected Variant]
-🔢 Quantity: [Qty]
-📝 Note: [Note]
-🔗 Product Link: [URL]
+*Product:* [Product Name]
+*Code:* [Product Code]
+*Price:* [Price]
 
-Could you please confirm availability and share more details? Thank you!`}</div>
+*Product Link:*
+[product URL]
+
+*Customer Details*
+Name: [Customer Name]
+Phone: [Phone Number]
+Alt. Phone: [Alt Number]
+
+Address:
+[House/Flat], [Street]
+Near [Landmark]
+[City] - [Pincode]
+[District], [State]
+
+Please share more details 😊`}</div>
           </div>
           <div className="flex justify-end">
             <button type="submit" disabled={update.isPending} className={btnCls}>Save WhatsApp</button>

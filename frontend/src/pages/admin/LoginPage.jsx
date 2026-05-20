@@ -62,7 +62,7 @@ export const LoginPage = () => {
 
             <button
               type="submit"
-              disabled={login.isPending || !password}
+              disabled={login.isPending || !password.trim()}
               className="w-full h-12 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >
               {login.isPending ? 'Verifying...' : 'Enter'}

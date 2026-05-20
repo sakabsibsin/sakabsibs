@@ -1,54 +1,71 @@
-import { useState, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, X, ArrowUpDown } from 'lucide-react';
-import { useProducts } from '@/features/products/hooks';
+import { Search, X } from 'lucide-react';
+import { useInfiniteProducts } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ProductGrid } from '@/components/store/ProductGrid';
 import { CategoryFilter } from '@/components/store/CategoryFilter';
 import { Input } from '@/components/ui/Input';
-import { cn, getEffectivePrice } from '@/lib/utils';
-
-const sortOptions = [
-  { label: 'Default', value: 'default' },
-  { label: 'Bestseller', value: 'featured' },
-  { label: 'Price: Low to High', value: 'price_asc' },
-  { label: 'Price: High to Low', value: 'price_desc' },
-];
+import { cn } from '@/lib/utils';
 
 export const CatalogPage = () => {
+  useEffect(() => { document.title = 'Shop — Sakab Sibs'; }, []);
+
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
-  const [sort, setSort] = useState('');
-  const [sortOpen, setSortOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [inStock, setInStock] = useState(false);
   const debouncedSearch = useDebounce(search, 350);
 
   const { data: categoriesData } = useCategories();
-  const { data, isLoading, isError, refetch } = useProducts({
-    category: category || undefined,
-    search: debouncedSearch || undefined,
-    limit: 100,
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    refetch,
+  } = useInfiniteProducts({
+    search: debouncedSearch,
+    category: selectedCategory,
+    inStock,
   });
 
-  const products = useMemo(() => {
-    let sorted = [...(data?.products ?? [])];
-    if (sort === 'price_asc') {
-      sorted = sorted.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b));
-    } else if (sort === 'price_desc') {
-      sorted = sorted.sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a));
-    } else if (sort === 'featured') {
-      sorted = sorted.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
-    }
-    return sorted;
-  }, [data?.products, sort]);
+  const products = data?.pages.flatMap((page) => page.products) ?? [];
+  const totalCount = data?.pages[0]?.total ?? 0;
 
-  const hasFilters = !!category || !!debouncedSearch || !!sort;
-  const clearAll = () => { setSearch(''); setCategory(''); setSort(''); };
+  // ── Intersection observer ─────────────────────────────────────────────
+  const sentinelRef = useRef(null);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '200px',
+      threshold: 0,
+    });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // ── Filters ───────────────────────────────────────────────────────────
+  const hasFilters = !!selectedCategory || !!debouncedSearch || inStock;
+  const clearAll = () => { setSearch(''); setSelectedCategory(''); setInStock(false); };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
       className="container-store pt-4 pb-12 sm:pb-16"
     >
@@ -77,22 +94,24 @@ export const CatalogPage = () => {
         <div className="mb-3 -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 overflow-hidden">
           <CategoryFilter
             categories={categoriesData}
-            selected={category}
-            onChange={setCategory}
+            selected={selectedCategory}
+            onChange={setSelectedCategory}
           />
         </div>
       )}
 
-      {/* Sort + result count row */}
+      {/* Count + In Stock toggle row */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <motion.p
-          key={`${products.length}-${category}-${sort}`}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
+          key={`${totalCount}-${selectedCategory}-${inStock}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.25 }}
           className="text-xs font-light text-muted-foreground/70 shrink-0"
         >
-          {isLoading ? '' : `${products.length} ${products.length === 1 ? 'piece' : 'pieces'}${category ? ` · ${category}` : ''}`}
+          {!isLoading && totalCount > 0
+            ? `${totalCount} ${totalCount === 1 ? 'piece' : 'pieces'}${selectedCategory ? ` · ${selectedCategory}` : ''}`
+            : ''}
         </motion.p>
 
         <div className="flex items-center gap-3">
@@ -104,46 +123,40 @@ export const CatalogPage = () => {
               Clear
             </button>
           )}
-
-          <div className="relative">
-            <button
-              onClick={() => setSortOpen((o) => !o)}
-              className={cn(
-                'flex items-center gap-2 h-9 px-3 border text-xs font-light transition-colors',
-                sort ? 'border-foreground text-foreground' : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
-              )}
-            >
-              <ArrowUpDown className="h-3.5 w-3.5" />
-              {sort ? sortOptions.find((o) => o.value === sort)?.label : 'Sort'}
-            </button>
-
-            {sortOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-20 bg-background border border-border shadow-md min-w-[180px]">
-                  {sortOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => { setSort(opt.value); setSortOpen(false); }}
-                      className={cn(
-                        'w-full text-left px-4 py-2.5 text-xs transition-colors',
-                        sort === opt.value
-                          ? 'bg-foreground text-background'
-                          : 'text-foreground hover:bg-muted'
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </>
+          <button
+            onClick={() => setInStock((v) => !v)}
+            className={cn(
+              'flex items-center h-9 px-3 border text-xs font-light transition-colors',
+              inStock
+                ? 'border-foreground text-foreground bg-foreground/5'
+                : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
             )}
-          </div>
+          >
+            In Stock
+          </button>
         </div>
       </div>
 
       {/* Product Grid */}
       <ProductGrid products={products} isLoading={isLoading} isError={isError} onRetry={refetch} />
+
+      {/* Sentinel — invisible trigger for intersection observer */}
+      <div ref={sentinelRef} className="h-1 w-full" aria-hidden="true" />
+
+      {/* Loading next page */}
+      {isFetchingNextPage && (
+        <div className="flex justify-center py-8">
+          <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground animate-spin" />
+        </div>
+      )}
+
+      {/* End of results */}
+      {!hasNextPage && products.length > 0 && !isLoading && (
+        <p className="text-center text-xs tracking-[0.2em] uppercase text-muted-foreground/50 py-8">
+          You&apos;ve seen all {totalCount} pieces
+        </p>
+      )}
+
     </motion.div>
   );
 };

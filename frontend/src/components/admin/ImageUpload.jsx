@@ -1,6 +1,7 @@
-import { useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -12,7 +13,9 @@ const getPreviewUrl = (item) => {
 };
 
 export const ImageUpload = ({ images = [], onChange, maxImages = 8 }) => {
-  const inputRef = useRef(null);
+  const inputRef    = useRef(null);
+  const dragIndex   = useRef(null);
+  const [dragOver, setDragOver] = useState(null);
 
   const handleChange = (e) => {
     const picked = Array.from(e.target.files || []);
@@ -39,9 +42,35 @@ export const ImageUpload = ({ images = [], onChange, maxImages = 8 }) => {
     <div className="space-y-3">
       <div className="grid grid-cols-4 gap-2">
         {images.map((item, i) => (
-          <div key={i} className="relative aspect-square">
-            <div className="w-full h-full bg-muted border border-border overflow-hidden">
-              <img src={getPreviewUrl(item)} alt="" className="w-full h-full object-cover" />
+          <div
+            key={i}
+            className={cn(
+              'relative aspect-square cursor-grab active:cursor-grabbing transition-opacity duration-150',
+              dragOver !== null && dragIndex.current === i && 'opacity-40'
+            )}
+            draggable
+            onDragStart={() => { dragIndex.current = i; }}
+            onDragOver={(e) => { e.preventDefault(); if (dragOver !== i) setDragOver(i); }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(null); }}
+            onDrop={() => {
+              const from = dragIndex.current;
+              setDragOver(null);
+              dragIndex.current = null;
+              if (from === null || from === i) return;
+              const next = [...images];
+              const [moved] = next.splice(from, 1);
+              next.splice(i, 0, moved);
+              onChange(next);
+            }}
+            onDragEnd={() => { dragIndex.current = null; setDragOver(null); }}
+          >
+            <div className={cn(
+              'w-full h-full bg-muted border overflow-hidden transition-all duration-150',
+              dragOver === i && dragIndex.current !== i
+                ? 'border-foreground ring-2 ring-foreground'
+                : 'border-border'
+            )}>
+              <img src={getPreviewUrl(item)} alt="" className="w-full h-full object-cover pointer-events-none" />
             </div>
             <button
               type="button"
@@ -65,6 +94,9 @@ export const ImageUpload = ({ images = [], onChange, maxImages = 8 }) => {
       </div>
       <input ref={inputRef} type="file" accept="image/*" multiple onChange={handleChange} className="hidden" />
       <p className="text-xs text-muted-foreground">{images.length}/{maxImages} images · JPEG, PNG, WebP · Max 10MB each</p>
+      {images.length > 1 && (
+        <p className="text-xs text-muted-foreground/50">Drag to reorder · First image is the thumbnail</p>
+      )}
     </div>
   );
 };

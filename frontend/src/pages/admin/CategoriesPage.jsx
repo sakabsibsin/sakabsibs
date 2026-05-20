@@ -39,7 +39,7 @@ export const CategoriesPage = () => {
   const update = useUpdateCategory();
   const remove = useDeleteCategory();
 
-  const autoPrefix  = name.trim().substring(0, 2).toUpperCase();
+  const autoPrefix  = name.match(/[a-zA-Z]/g)?.slice(0, 2).join('').toUpperCase() || 'XX';
   const countMap    = Object.fromEntries(
     (stats?.categories ?? []).map((c) => [c.category, c.count])
   );
@@ -311,7 +311,13 @@ export const CategoriesPage = () => {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => setDeleteTarget(null)}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={(countMap[deleteTarget?.name] ?? 0) > 0}
+            className={(countMap[deleteTarget?.name] ?? 0) > 0 ? 'opacity-40 pointer-events-none' : ''}
+          >
+            Delete
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialog>
     </div>

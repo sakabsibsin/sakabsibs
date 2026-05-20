@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getApiError } from '@/lib/utils';
+import { PAGE_SIZE } from '@/constants/config';
 import * as api from './api';
 
 export const productKeys = {
@@ -99,3 +100,16 @@ export const useRegisterVariantDemand = () =>
     mutationFn: ({ productId, variantId }) => api.registerVariantDemand(productId, variantId),
     onError: (err) => toast.error(getApiError(err, 'Could not register your interest. Please try again.')),
   });
+
+export const useInfiniteProducts = ({ search = '', category = '', inStock = false } = {}) => {
+  return useInfiniteQuery({
+    queryKey: ['products', 'infinite', { search, category, inStock }],
+    queryFn: ({ pageParam }) => api.fetchProductsPage({ pageParam, search, category, inStock }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return lastPageParam + PAGE_SIZE;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+};

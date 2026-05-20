@@ -27,7 +27,7 @@ This is not a traditional ecommerce app. Never add cart/orders/payments unless t
 | Toasts | Sonner | both admin and store |
 | Backend | Express.js + ESM JS | `"type": "module"`, NOT TypeScript |
 | Database | MongoDB Atlas + Mongoose | |
-| Auth | JWT in httpOnly cookie | cookie name: `sakabsibs_token` |
+| Auth | JWT in localStorage | sent via `Authorization: Bearer <token>` header |
 | Images | Cloudinary | server-proxied upload — secret never reaches browser |
 | Icons | Lucide React | |
 
@@ -112,16 +112,16 @@ sakabsibs/
 ## Key Architecture Decisions
 
 ### Auth
-- JWT stored in **httpOnly cookie** (`sakabsibs_token`) — NOT localStorage
-- `sameSite: 'lax'` in dev, `'strict'` in prod
-- `useAuthStatus()` hook calls `/auth/me` with `retry: false, throwOnError: false` — safe to call from store pages (returns null on 401, no redirect)
-- Axios client has `withCredentials: true` on all requests
-- 401 interceptor only redirects to `/admin/login` when on an admin page
+- JWT stored in **localStorage** (`sakabsibs_token`) — switched from httpOnly cookies because iOS Safari ITP blocks cross-origin cookies between frontend and backend on different domains
+- `apiClient.js` attaches `Authorization: Bearer <token>` on every outgoing request via request interceptor
+- `useAuthStatus()` hook calls `/auth/me` with `retry: false, throwOnError: false, enabled: !!getToken()` — skips network call entirely when not logged in; safe to call from store pages
+- 401 interceptor redirects to `/admin/login` only when already on an admin page, and clears the token from localStorage
+- Backend `requireAuth` middleware reads `req.headers.authorization` (Bearer scheme), NOT cookies
 
 ### Image Upload
 - Browser → `POST /api/upload` (multipart/form-data) → multer buffers in memory → streams to Cloudinary
 - `CLOUDINARY_API_SECRET` never reaches the browser
-- Frontend uses `fetch()` with `credentials: 'include'` — NOT Axios (Axios requires manual boundary header removal for multipart)
+- Frontend uses `fetch()` with `headers: { Authorization: 'Bearer <token>' }` — NOT Axios (Axios requires manual boundary header removal for multipart)
 - Returns `{ url }` (Cloudinary `secure_url`)
 - **Local preview pattern**: ImageUpload stores `File` objects locally using `URL.createObjectURL()`. Actual Cloudinary upload is deferred until form submit via `uploadFiles()` helper in ProductForm. This avoids orphan uploads on cancel.
 
@@ -259,7 +259,7 @@ toJSON transform: adds `id`, removes `_id` and `__v`.
 ## Design System
 
 ### Brand Identity
-- Brand name: **Sakab Sibs** (display), `sakabsibs` (technical/cookie names)
+- Brand name: **Sakab Sibs** (display), `sakabsibs` (technical — localStorage key prefix, cookie name)
 - Instagram: `@sakab.sibs`
 - Palette: warm cream background × deep burgundy-brown — inspired by their IG aesthetic
 
@@ -389,14 +389,14 @@ Back button uses `navigate(-1)` — triggers POP for scroll restoration.
 - `formatPrice(price)` from `@/lib/utils` for all price display (formats as ₹X,XXX)
 - `cn()` from `@/lib/utils` for conditional classes (clsx + tailwind-merge)
 - `useSettings()` from `@/features/auth/hooks` for store settings (whatsapp_number, etc.)
-- Axios client at `@/lib/api-client` — already has `withCredentials: true` and 401 interceptor
+- Axios client at `@/lib/apiClient` — already attaches `Authorization: Bearer` header and has 401 interceptor
 
 ### Backend
 - ESM modules (`import/export`) — `"type": "module"` in package.json
 - `asyncHandler` wrapper on all controller functions — no try/catch in controllers
 - `sendSuccess` / `sendError` from `apiResponse.js` for all responses
 - Zod validators in `/validators/` — applied via `validate` middleware
-- Auth middleware reads `sakabsibs_token` cookie and attaches `req.admin`
+- Auth middleware reads `Authorization: Bearer` header and attaches `req.admin`
 
 ---
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Star } from 'lucide-react';
@@ -12,6 +13,7 @@ const fadeUp = (delay = 0) => ({
 });
 
 export const HomePage = () => {
+  useEffect(() => { document.title = 'Sakab Sibs — Tarnish Free Accessories'; }, []);
   const { data: products = [], isLoading } = useFeaturedProducts();
 
   return (

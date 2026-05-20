@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Menu, X, LogOut, LayoutDashboard, Package, PackagePlus,
-  Tag, Settings, Store, ChevronDown,
+  Tag, Settings, Store, ChevronDown, RotateCcw,
 } from 'lucide-react';
 import { useLogout } from '@/features/auth/hooks';
 import { STORE_NAME } from '@/constants/config';
@@ -20,6 +20,7 @@ const navGroups = [
       { to: '/admin/products', label: 'All Products', icon: Package },
       { to: '/admin/products/new', label: 'Add Product', icon: PackagePlus, exact: true },
       { to: '/admin/categories', label: 'Categories', icon: Tag },
+      { to: '/admin/restock', label: 'Restock', icon: RotateCcw },
     ],
   },
   {
@@ -116,9 +117,10 @@ export const AdminSidebar = () => {
                 )}
               </div>
 
-              {/* Categories + Settings */}
+              {/* Categories + Restock + Settings */}
               {[
                 { to: '/admin/categories', label: 'Categories' },
+                { to: '/admin/restock', label: 'Restock' },
                 { to: '/admin/settings', label: 'Settings' },
               ].map(({ to, label }) => (
                 <Link

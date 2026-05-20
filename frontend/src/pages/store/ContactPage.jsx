@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MessageCircle, Instagram, Phone } from 'lucide-react';
 import { useSettings } from '@/features/auth/hooks';
@@ -10,6 +11,7 @@ const fadeUp = (delay = 0) => ({
 });
 
 export const ContactPage = () => {
+  useEffect(() => { document.title = 'Contact — Sakab Sibs'; }, []);
   const { data: settings } = useSettings();
   const whatsapp = settings?.whatsapp_number || '919110225313';
   const phone = settings?.store_phone || '';

@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
+import { PAGE_SIZE } from '@/constants/config';
 
 export const fetchProducts = async (params = {}) => {
   const { data } = await apiClient.get('/products', { params });
@@ -50,4 +51,15 @@ export const registerVariantDemand = async (productId, variantId) => {
     `/products/${productId}/variants/${variantId}/demand`
   );
   return data.data;
+};
+
+export const fetchProductsPage = async ({ pageParam = 0, search, category, inStock }) => {
+  const params = new URLSearchParams();
+  params.set('limit', PAGE_SIZE);
+  params.set('offset', pageParam);
+  if (search) params.set('search', search);
+  if (category) params.set('category', category);
+  if (inStock) params.set('inStock', 'true');
+  const { data } = await apiClient.get(`/products?${params.toString()}`);
+  return data.data; // returns { products, total, hasMore }
 };

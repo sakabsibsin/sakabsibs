@@ -29,7 +29,7 @@ const flattenOos = (products) => {
         });
       }
     } else {
-      product.variants.filter((v) => v.inStock === false).forEach((variant) => {
+      (product.variants ?? []).filter((v) => v.inStock === false).forEach((variant) => {
         rows.push({
           key: `${product.id}-${variant.id}`, type: 'variant', product, variant,
           demand: variant.demandCount ?? 0,
@@ -92,7 +92,7 @@ export const RestockPage = () => {
       toggleVariantStock.mutate(
         { productId: item.product.id, variantId: item.variant.id, inStock: true },
         {
-          onSuccess: () => { toast.success(`${item.variant.color} is back in stock.`); qc.invalidateQueries({ queryKey: productKeys.lists() }); },
+          onSuccess: () => { toast.success(`${item.variant.color} is back in stock.`); qc.invalidateQueries({ queryKey: productKeys.lists() }); qc.invalidateQueries({ queryKey: productKeys.detail(item.product.id) }); },
           onError: (err) => toast.error(getApiError(err, 'Failed to update stock.')),
         }
       );

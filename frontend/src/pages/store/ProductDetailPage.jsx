@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Link2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useProduct, useRegisterDemand, useRegisterVariantDemand } from '@/features/products/hooks';
 import { useSettings } from '@/features/auth/hooks';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatPrice, cn } from '@/lib/utils';
+import { formatPrice, cn, getProductThumbnail, getCloudinaryThumb } from '@/lib/utils';
 
 /* ── Skeleton ─────────────────────────────────── */
 const LoadingSkeleton = () => (
@@ -58,6 +58,9 @@ export const ProductDetailPage = () => {
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [hasDemanded, setHasDemanded] = useState(false);
   const touchStartX = useRef(null);
+  const copyTimerRef = useRef(null);
+  const [copied, setCopied] = useState(false);
+  const [galleryLoaded, setGalleryLoaded] = useState(false);
   const registerDemand = useRegisterDemand();
   const registerVariantDemand = useRegisterVariantDemand();
 
@@ -100,6 +103,55 @@ export const ProductDetailPage = () => {
     }
   }, [product?.id, selectedVariant]);
 
+  // Set document title and OG meta tags when product loads — enables rich previews on WhatsApp/Instagram
+  useEffect(() => {
+    if (!product) return;
+    const firstImage = getProductThumbnail(product);
+    document.title = `${product.name} — Sakab Sibs`;
+    const setMeta = (property, content) => {
+      let el = document.querySelector(`meta[property="${property}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute('property', property);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+    };
+    setMeta('og:title', product.name);
+    setMeta('og:description', product.description);
+    setMeta('og:image', firstImage);
+    setMeta('og:url', window.location.href);
+    setMeta('og:type', 'product');
+    setMeta('og:site_name', 'Sakab Sibs');
+    return () => { document.title = 'Sakab Sibs — Tarnish Free Accessories'; };
+  }, [product]);
+
+  useEffect(() => () => clearTimeout(copyTimerRef.current), []);
+  useEffect(() => { setGalleryLoaded(false); }, [activeImgIndex, selectedVariant]);
+
+  // Hoisted before early returns so keyboard effect can reference them legally
+  const variants = product?.variants ?? [];
+  const hasVariants = variants.length > 0;
+  const activeImages = hasVariants && selectedVariant !== null
+    ? (variants[selectedVariant]?.images?.length > 0 ? variants[selectedVariant].images : [])
+    : product?.images ?? [];
+  const hasMultiple = activeImages.length > 1;
+
+  // Keyboard arrow navigation
+  useEffect(() => {
+    if (!hasMultiple) return;
+    const len = activeImages.length;
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        setActiveImgIndex((i) => (i > 0 ? i - 1 : i));
+      } else if (e.key === 'ArrowRight') {
+        setActiveImgIndex((i) => (i < len - 1 ? i + 1 : i));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasMultiple, activeImages.length]);
+
   const handleDemand = () => {
     if (hasDemanded || registerDemand.isPending || registerVariantDemand.isPending) return;
     if (hasVariants && selectedVariant !== null && variants[selectedVariant]?.id) {
@@ -120,6 +172,14 @@ export const ProductDetailPage = () => {
     }
   };
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true);
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   if (isLoading) return <LoadingSkeleton />;
 
   if (!product) return (
@@ -135,8 +195,6 @@ export const ProductDetailPage = () => {
   const rawPhone = (settings?.whatsapp_number || '').replace(/\D/g, '');
   // Auto-prepend India country code if admin saved only 10-digit local number
   const phoneNumber = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
-  const variants = product.variants ?? [];
-  const hasVariants = variants.length > 0;
   // Display order: default variant first, rest in original order
   const displayVariants = [...variants]
     .map((v, originalIndex) => ({ ...v, originalIndex }))
@@ -145,12 +203,6 @@ export const ProductDetailPage = () => {
   const activePrice = hasVariants && selectedVariant !== null
     ? variants[selectedVariant].price
     : product.price;
-
-  const activeImages = hasVariants && selectedVariant !== null
-    ? (variants[selectedVariant].images?.length > 0 ? variants[selectedVariant].images : [])
-    : product.images ?? [];
-
-  const hasMultiple = activeImages.length > 1;
 
   const activeVariant = hasVariants && selectedVariant !== null ? variants[selectedVariant] : null;
   const isCurrentlyAvailable = !hasVariants
@@ -181,21 +233,36 @@ export const ProductDetailPage = () => {
       transition={{ duration: 0.4 }}
       className="container-store pt-4 sm:pt-6 pb-10 sm:pb-14"
     >
-      {/* Back */}
-      <button
-        onClick={() => navigate(-1)}
-        className="group mb-5 inline-flex items-center gap-2 text-2xs tracking-[0.2em] uppercase font-light text-muted-foreground/60 hover:text-foreground transition-colors duration-200"
-      >
-        <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
-        Collection
-      </button>
+      {/* Back + Copy link row */}
+      <div className="flex items-center justify-between mb-5">
+        <button
+          onClick={() => navigate(-1)}
+          className="group inline-flex items-center gap-2 text-2xs tracking-[0.2em] uppercase font-light text-muted-foreground/60 hover:text-foreground transition-colors duration-200"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+          Collection
+        </button>
+        <button
+          onClick={handleCopy}
+          className={cn(
+            'flex items-center gap-1.5 text-2xs tracking-[0.2em] uppercase font-light transition-colors duration-200',
+            copied ? 'text-green-600' : 'text-muted-foreground/50 hover:text-muted-foreground'
+          )}
+        >
+          {copied
+            ? <Check className="h-3 w-3 shrink-0" />
+            : <Link2 className="h-3 w-3 shrink-0" />
+          }
+          {copied ? 'Copied!' : 'Copy link'}
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_0.88fr] lg:gap-16 xl:gap-24">
 
         {/* ── Image Gallery ─────────────────────── */}
         <div className="space-y-3">
           <div
-            className="relative aspect-square overflow-hidden select-none"
+            className="group relative aspect-[4/5] overflow-hidden select-none"
             style={{ background: 'hsl(34, 38%, 93%)' }}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
@@ -205,40 +272,84 @@ export const ProductDetailPage = () => {
                 <span className="font-serif italic text-sm text-muted-foreground/40">No photo</span>
               </div>
             ) : (
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={`${selectedVariant}-${activeImgIndex}`}
-                  src={activeImages[activeImgIndex]}
-                  alt={product.name}
-                  className="w-full h-full object-cover object-center pointer-events-none"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-                  draggable={false}
-                />
-              </AnimatePresence>
+              <>
+                <div className={`absolute inset-0 bg-muted transition-opacity duration-500 ${galleryLoaded ? 'opacity-0' : 'opacity-100'}`} />
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={`${selectedVariant}-${activeImgIndex}`}
+                    src={getCloudinaryThumb(activeImages[activeImgIndex], 1200)}
+                    alt={product.name}
+                    className="w-full h-full object-cover object-center pointer-events-none"
+                    onLoad={() => setGalleryLoaded(true)}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+                    draggable={false}
+                  />
+                </AnimatePresence>
+              </>
             )}
 
+            {/* Gallery navigation arrows */}
+            {/* Wrapper handles absolute positioning + vertical centering — kept
+                separate from the button so Framer Motion's scale transform on
+                the button can never overwrite the translateY centering. */}
+            <AnimatePresence>
+              {activeImages.length > 1 && activeImgIndex > 0 && (
+                <motion.div
+                  key="gallery-prev"
+                  initial={{ opacity: 0, y: '-50%' }}
+                  animate={{ opacity: 1, y: '-50%' }}
+                  exit={{ opacity: 0, y: '-50%' }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-2.5 top-1/2 z-10"
+                >
+                  <motion.button
+                    onClick={prev}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 bg-background/70 hover:bg-background/95 border border-border/50 hover:border-border text-foreground opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-[opacity,background-color,border-color] duration-150"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                  </motion.button>
+                </motion.div>
+              )}
+              {activeImages.length > 1 && activeImgIndex < activeImages.length - 1 && (
+                <motion.div
+                  key="gallery-next"
+                  initial={{ opacity: 0, y: '-50%' }}
+                  animate={{ opacity: 1, y: '-50%' }}
+                  exit={{ opacity: 0, y: '-50%' }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-2.5 top-1/2 z-10"
+                >
+                  <motion.button
+                    onClick={next}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 bg-background/70 hover:bg-background/95 border border-border/50 hover:border-border text-foreground opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-[opacity,background-color,border-color] duration-150"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Dot indicators */}
             {hasMultiple && (
-              <>
-                <button onClick={prev}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 bg-background/85 backdrop-blur-sm flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <button onClick={next}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 bg-background/85 backdrop-blur-sm flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
-                  <ArrowLeft className="h-4 w-4 rotate-180" />
-                </button>
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-                  {activeImages.map((_, i) => (
-                    <button key={i} onClick={() => setActiveImgIndex(i)}
-                      className={cn('h-[3px] rounded-full transition-all duration-300',
-                        i === activeImgIndex ? 'w-6 bg-foreground' : 'w-2 bg-foreground/20 hover:bg-foreground/40'
-                      )} />
-                  ))}
-                </div>
-              </>
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+                {activeImages.map((_, i) => (
+                  <button key={i} onClick={() => setActiveImgIndex(i)}
+                    className={cn('h-[3px] rounded-full transition-all duration-300',
+                      i === activeImgIndex ? 'w-6 bg-foreground' : 'w-2 bg-foreground/20 hover:bg-foreground/40'
+                    )} />
+                ))}
+              </div>
             )}
           </div>
 
@@ -249,7 +360,7 @@ export const ProductDetailPage = () => {
                   className={cn('h-[68px] w-[68px] flex-shrink-0 overflow-hidden transition-all duration-200',
                     i === activeImgIndex ? 'ring-1 ring-foreground ring-offset-2 opacity-100' : 'opacity-40 hover:opacity-70'
                   )}>
-                  <img src={img} alt="" className="w-full h-full object-cover" draggable={false} />
+                  <img src={getCloudinaryThumb(img, 120)} alt="" className="w-full h-full object-cover" draggable={false} />
                 </button>
               ))}
             </div>

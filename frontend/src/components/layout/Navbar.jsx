@@ -29,6 +29,7 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', update);
   }, []);
   const { pathname } = useLocation();
+  useEffect(() => { setOpen(false); }, [pathname]);
   const { data: auth } = useAuthStatus();
   const isAdmin = auth?.authenticated === true;
 

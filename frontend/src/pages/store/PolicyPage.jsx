@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Package, RefreshCcw, MessageCircle } from 'lucide-react';
@@ -36,7 +37,9 @@ const sections = [
   },
 ];
 
-export const PolicyPage = () => (
+export const PolicyPage = () => {
+  useEffect(() => { document.title = 'Shipping & Returns — Sakab Sibs'; }, []);
+  return (
   <div className="container-store py-10 sm:py-16 max-w-3xl">
 
     {/* Header */}
@@ -111,4 +114,5 @@ export const PolicyPage = () => (
     </motion.div>
 
   </div>
-);
+  );
+};

@@ -65,7 +65,7 @@ const VariantModal = ({ open, onClose, initialData, onSave }) => {
 
   useEffect(() => {
     if (open) {
-      setDraft(initialData ?? EMPTY_DRAFT);
+      setDraft(initialData ? { ...initialData } : { ...EMPTY_DRAFT });
       setErrors({});
     }
   }, [open, initialData]);

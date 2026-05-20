@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/Badge';
-import { formatPrice, getEffectivePrice, getProductThumbnail } from '@/lib/utils';
+import { formatPrice, getEffectivePrice, getProductThumbnail, getCloudinaryThumb } from '@/lib/utils';
 
 export const ProductCard = ({ product, index = 0 }) => {
   const thumbnail = getProductThumbnail(product);
+  const [loaded, setLoaded] = useState(false);
   return (
   <Link
     to={`/products/${product.id}`}
@@ -16,12 +18,16 @@ export const ProductCard = ({ product, index = 0 }) => {
       style={{ background: 'hsl(34, 40%, 94%)' }}
     >
       {thumbnail ? (
-        <img
-          src={thumbnail}
-          alt={product.name}
-          loading="lazy"
-          className="w-full h-full object-cover object-center transition-transform duration-700 ease-out-expo group-hover:scale-[1.07]"
-        />
+        <>
+          <div className={`absolute inset-0 bg-muted transition-opacity duration-500 ${loaded ? 'opacity-0' : 'opacity-100'}`} />
+          <img
+            src={getCloudinaryThumb(thumbnail, 400)}
+            alt={product.name}
+            loading="lazy"
+            onLoad={() => setLoaded(true)}
+            className={`w-full h-full object-cover object-center transition-[transform,opacity] duration-500 ease-out-expo group-hover:scale-[1.07] ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        </>
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <span className="font-serif italic text-sm text-muted-foreground/40">No image</span>

@@ -34,3 +34,8 @@ export const getEffectivePrice = (product) => {
   const def = product.variants.find((v) => v.isDefault) ?? product.variants[0];
   return def?.price ?? product.price;
 };
+
+export const getCloudinaryThumb = (url, width = 400) => {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  return url.replace('/upload/', `/upload/w_${width},c_limit,q_auto,f_auto/`);
+};

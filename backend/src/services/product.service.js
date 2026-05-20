@@ -1,5 +1,14 @@
 import { Product } from '../models/Product.js';
 import { generateProductCode } from '../utils/codeGenerator.js';
+import { deleteFromCloudinary } from './upload.service.js';
+
+// Extracts the Cloudinary public_id from a full Cloudinary URL.
+// Returns null for non-Cloudinary URLs (e.g. picsum seed data).
+const extractPublicId = (url) => {
+  if (!url || !url.includes('cloudinary.com')) return null;
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
+  return match ? match[1] : null;
+};
 
 export const listProducts = async ({
   category, inStock, featured, search,
@@ -64,6 +73,29 @@ export const createProduct = async (body) => {
 };
 
 export const updateProduct = async (id, body) => {
+  const existing = await Product.findById(id);
+  if (!existing) return null;
+
+  // Build the set of images that will exist after this save.
+  // Only consider a field "changed" if it was explicitly included in the body —
+  // a partial update that omits `images` should not trigger deletions for that field.
+  const incomingBaseImages  = body.images    !== undefined ? body.images    : existing.images;
+  const incomingVariantImages = body.variants !== undefined
+    ? body.variants.flatMap((v) => v.images ?? [])
+    : existing.variants.flatMap((v) => v.images);
+
+  const incomingSet = new Set([...incomingBaseImages, ...incomingVariantImages]);
+
+  const existingUrls = [
+    ...existing.images,
+    ...existing.variants.flatMap((v) => v.images),
+  ];
+  const removedUrls   = existingUrls.filter((url) => !incomingSet.has(url));
+  const publicIds     = removedUrls.map(extractPublicId).filter(Boolean);
+  if (publicIds.length > 0) {
+    await Promise.allSettled(publicIds.map(deleteFromCloudinary));
+  }
+
   let finalBody = body;
   if (Array.isArray(body.variants) && body.variants.length > 0) {
     // Master always mirrors variant states: any variant in stock → master on, all OOS → master off
@@ -72,7 +104,22 @@ export const updateProduct = async (id, body) => {
   return Product.findByIdAndUpdate(id, finalBody, { new: true, runValidators: true });
 };
 
-export const deleteProduct = (id) => Product.findByIdAndDelete(id);
+export const deleteProduct = async (id) => {
+  const product = await Product.findById(id);
+  if (!product) return null;
+
+  const urls = [
+    ...product.images,
+    ...product.variants.flatMap((v) => v.images),
+  ];
+  const publicIds = urls.map(extractPublicId).filter(Boolean);
+  if (publicIds.length > 0) {
+    await Promise.allSettled(publicIds.map(deleteFromCloudinary));
+  }
+
+  await product.deleteOne();
+  return product;
+};
 
 export const toggleStock = (id, inStock) =>
   Product.findByIdAndUpdate(
