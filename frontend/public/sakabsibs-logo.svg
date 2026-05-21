@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Sakab Sibs">
   <title>Sakab Sibs</title>
-  <!-- Round cream background, matches the Instagram profile crop. -->
-  <circle cx="256" cy="256" r="256" fill="#F5ECE0"/>
+  <!-- Square cream background. iOS / Android / browsers apply their own corner
+       mask to home-screen icons, so the source must stay square — a pre-rounded
+       source double-masks and ends up looking like a tiny cream bubble inside
+       the system's own rounded rectangle. -->
+  <rect width="512" height="512" fill="#F5ECE0"/>
   <!-- Brand wordmark, stacked SAKAB / SIBS in a heavy editorial serif.
        Cormorant Garamond 700 is loaded by the site; Playfair Display / Bodoni
        are common OS fallbacks; Georgia is the universal serif fallback. The

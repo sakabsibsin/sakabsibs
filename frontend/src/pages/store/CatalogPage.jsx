@@ -183,8 +183,20 @@ export const CatalogPage = () => {
 
       {/* Loading next page */}
       {isFetchingNextPage && (
-        <div className="flex justify-center py-8">
-          <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground animate-spin" />
+        <div
+          className="flex items-center justify-center gap-2 py-8"
+          role="status"
+          aria-label="Loading more products"
+        >
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              aria-hidden="true"
+              className="block h-1.5 w-1.5 rounded-full bg-foreground"
+              animate={{ opacity: [0.18, 1, 0.18], y: [0, -2, 0] }}
+              transition={{ duration: 1.05, repeat: Infinity, delay: i * 0.16, ease: 'easeInOut' }}
+            />
+          ))}
         </div>
       )}
 

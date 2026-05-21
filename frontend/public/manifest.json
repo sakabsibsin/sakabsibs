@@ -13,14 +13,9 @@
       "type": "image/svg+xml"
     },
     {
-      "src": "/sakabsibs-logo.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/sakabsibs-logo.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/sakabsibs-logo.jpg",
+      "sizes": "839x839",
+      "type": "image/jpeg"
     }
   ]
 }
