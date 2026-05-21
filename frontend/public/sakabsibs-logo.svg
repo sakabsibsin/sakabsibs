@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Sakab Sibs">
+  <title>Sakab Sibs</title>
+  <!-- Round cream background, matches the Instagram profile crop. -->
+  <circle cx="256" cy="256" r="256" fill="#F5ECE0"/>
+  <!-- Brand wordmark, stacked SAKAB / SIBS in a heavy editorial serif.
+       Cormorant Garamond 700 is loaded by the site; Playfair Display / Bodoni
+       are common OS fallbacks; Georgia is the universal serif fallback. The
+       stroke duplicates the fill colour for a slightly heavier visual weight,
+       since Cormorant 700 alone reads lighter than the printed logo. -->
+  <g fill="#4A1E1E" stroke="#4A1E1E" stroke-width="1.5"
+     font-family="'Cormorant Garamond','Playfair Display','Bodoni 72',Georgia,serif"
+     font-weight="700" text-anchor="middle">
+    <text x="256" y="240" font-size="130" letter-spacing="6">SAKAB</text>
+    <text x="256" y="380" font-size="130" letter-spacing="6">SIBS</text>
+  </g>
+</svg>

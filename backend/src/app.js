@@ -29,6 +29,13 @@ app.use(express.urlencoded({ extended: true }));
 // Global rate limit on all API routes
 app.use('/api', apiRateLimit);
 app.use('/api', routes);
+
+// JSON 404 for unmatched /api/* — prevents the Express default HTML response
+// that would break frontend error parsing.
+app.use('/api', (_req, res) => {
+  res.status(404).json({ success: false, error: 'Route not found' });
+});
+
 app.use(errorHandler);
 
 export default app;

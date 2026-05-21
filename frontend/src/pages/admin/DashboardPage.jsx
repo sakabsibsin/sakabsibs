@@ -13,9 +13,13 @@ const QUICK_ACTIONS = [
 
 ];
 
+// Stale-while-revalidate: show cached data instantly on remount,
+// kick off a background refetch, swap in fresh data when it arrives.
+const SWR = { refetchOnMount: 'always' };
+
 export const DashboardPage = () => {
-  const { data: stats, isLoading: statsLoading } = useProductStats();
-  const { data: outOfStockData } = useProducts({ anyOutOfStock: true, limit: 50 });
+  const { data: stats, isLoading: statsLoading } = useProductStats(SWR);
+  const { data: outOfStockData } = useProducts({ anyOutOfStock: true, limit: 50 }, SWR);
 
   const demandCount = (outOfStockData?.products ?? []).filter((p) => {
     const variantDemand = (p.variants ?? []).some((v) => (v.demandCount ?? 0) > 0 && v.inStock === false);

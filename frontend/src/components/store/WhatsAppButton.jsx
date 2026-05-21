@@ -51,12 +51,23 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
     if (errors[field]) setErrors((er) => ({ ...er, [field]: '' }));
   };
 
+  // Digits-only input that enforces a max length at the keystroke / paste level.
+  // Used for phone, altPhone, pincode — these must never contain letters or symbols.
+  const setDigits = (field, maxLen) => (e) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, maxLen);
+    setForm((f) => ({ ...f, [field]: digits }));
+    if (errors[field]) setErrors((er) => ({ ...er, [field]: '' }));
+  };
+
   const validate = () => {
     const required = ['fullName', 'phone', 'houseName', 'street', 'city', 'district', 'state', 'pincode'];
     const next = {};
     required.forEach((k) => { if (!form[k].trim()) next[k] = 'Required'; });
-    if (form.phone && !/^[6-9]\d{9}$/.test(form.phone.replace(/\s/g, ''))) next.phone = 'Enter a valid 10-digit mobile number';
-    if (form.pincode && !/^\d{6}$/.test(form.pincode.replace(/\s/g, ''))) next.pincode = 'Enter a valid 6-digit pincode';
+    if (form.fullName.trim() && form.fullName.trim().length < 2) next.fullName = 'Enter your full name';
+    if (form.phone && !/^[6-9]\d{9}$/.test(form.phone)) next.phone = 'Enter a valid 10-digit mobile number';
+    if (form.altPhone && !/^[6-9]\d{9}$/.test(form.altPhone)) next.altPhone = 'Enter a valid 10-digit mobile number';
+    if (form.phone && form.altPhone && form.phone === form.altPhone) next.altPhone = 'Must be different from primary number';
+    if (form.pincode && !/^\d{6}$/.test(form.pincode)) next.pincode = 'Enter a valid 6-digit pincode';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -185,17 +196,45 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                   <div>
                     <label className={labelCls}>Full Name *</label>
-                    <input value={form.fullName} onChange={set('fullName')} placeholder="Your full name" className={inputCls} />
+                    <input
+                      value={form.fullName}
+                      onChange={set('fullName')}
+                      placeholder="Your full name"
+                      className={inputCls}
+                      autoComplete="name"
+                      maxLength={60}
+                    />
                     {errors.fullName && <p className="text-[10px] text-destructive mt-1">{errors.fullName}</p>}
                   </div>
                   <div>
                     <label className={labelCls}>Phone Number *</label>
-                    <input value={form.phone} onChange={set('phone')} placeholder="10-digit mobile" className={inputCls} inputMode="tel" />
+                    <input
+                      value={form.phone}
+                      onChange={setDigits('phone', 10)}
+                      placeholder="10-digit mobile"
+                      className={inputCls}
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      maxLength={10}
+                      pattern="[6-9][0-9]{9}"
+                    />
                     {errors.phone && <p className="text-[10px] text-destructive mt-1">{errors.phone}</p>}
                   </div>
                   <div className="sm:col-span-2">
                     <label className={labelCls}>Alternative Number <span className="normal-case tracking-normal text-muted-foreground/30">optional</span></label>
-                    <input value={form.altPhone} onChange={set('altPhone')} placeholder="Another number (if any)" className={inputCls} inputMode="tel" />
+                    <input
+                      value={form.altPhone}
+                      onChange={setDigits('altPhone', 10)}
+                      placeholder="Another number (if any)"
+                      className={inputCls}
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      maxLength={10}
+                      pattern="[6-9][0-9]{9}"
+                    />
+                    {errors.altPhone && <p className="text-[10px] text-destructive mt-1">{errors.altPhone}</p>}
                   </div>
                 </div>
               </div>
@@ -208,37 +247,87 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                 <div className="space-y-5">
                   <div>
                     <label className={labelCls}>House / Flat Name *</label>
-                    <input value={form.houseName} onChange={set('houseName')} placeholder="House name or flat number" className={inputCls} />
+                    <input
+                      value={form.houseName}
+                      onChange={set('houseName')}
+                      placeholder="House name or flat number"
+                      className={inputCls}
+                      autoComplete="address-line1"
+                      maxLength={80}
+                    />
                     {errors.houseName && <p className="text-[10px] text-destructive mt-1">{errors.houseName}</p>}
                   </div>
                   <div>
                     <label className={labelCls}>Street / Area *</label>
-                    <input value={form.street} onChange={set('street')} placeholder="Street or locality name" className={inputCls} />
+                    <input
+                      value={form.street}
+                      onChange={set('street')}
+                      placeholder="Street or locality name"
+                      className={inputCls}
+                      autoComplete="address-line2"
+                      maxLength={80}
+                    />
                     {errors.street && <p className="text-[10px] text-destructive mt-1">{errors.street}</p>}
                   </div>
                   <div>
                     <label className={labelCls}>Landmark <span className="normal-case tracking-normal text-muted-foreground/30">optional</span></label>
-                    <input value={form.landmark} onChange={set('landmark')} placeholder="Near school, temple, etc." className={inputCls} />
+                    <input
+                      value={form.landmark}
+                      onChange={set('landmark')}
+                      placeholder="Near school, temple, etc."
+                      className={inputCls}
+                      maxLength={60}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                     <div>
                       <label className={labelCls}>City *</label>
-                      <input value={form.city} onChange={set('city')} placeholder="City" className={inputCls} />
+                      <input
+                        value={form.city}
+                        onChange={set('city')}
+                        placeholder="City"
+                        className={inputCls}
+                        autoComplete="address-level2"
+                        maxLength={50}
+                      />
                       {errors.city && <p className="text-[10px] text-destructive mt-1">{errors.city}</p>}
                     </div>
                     <div>
                       <label className={labelCls}>Pincode *</label>
-                      <input value={form.pincode} onChange={set('pincode')} placeholder="000000" className={inputCls} inputMode="numeric" maxLength={6} />
+                      <input
+                        value={form.pincode}
+                        onChange={setDigits('pincode', 6)}
+                        placeholder="000000"
+                        className={inputCls}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="postal-code"
+                        maxLength={6}
+                        pattern="[0-9]{6}"
+                      />
                       {errors.pincode && <p className="text-[10px] text-destructive mt-1">{errors.pincode}</p>}
                     </div>
                     <div>
                       <label className={labelCls}>District *</label>
-                      <input value={form.district} onChange={set('district')} placeholder="District" className={inputCls} />
+                      <input
+                        value={form.district}
+                        onChange={set('district')}
+                        placeholder="District"
+                        className={inputCls}
+                        maxLength={50}
+                      />
                       {errors.district && <p className="text-[10px] text-destructive mt-1">{errors.district}</p>}
                     </div>
                     <div>
                       <label className={labelCls}>State *</label>
-                      <input value={form.state} onChange={set('state')} placeholder="State" className={inputCls} />
+                      <input
+                        value={form.state}
+                        onChange={set('state')}
+                        placeholder="State"
+                        className={inputCls}
+                        autoComplete="address-level1"
+                        maxLength={50}
+                      />
                       {errors.state && <p className="text-[10px] text-destructive mt-1">{errors.state}</p>}
                     </div>
                   </div>

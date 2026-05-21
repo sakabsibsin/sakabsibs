@@ -38,7 +38,7 @@ const sections = [
 ];
 
 export const PolicyPage = () => {
-  useEffect(() => { document.title = 'Shipping & Returns — Sakab Sibs'; }, []);
+  useEffect(() => { document.title = 'Sakab Sibs — Shipping & Returns'; }, []);
   return (
   <div className="container-store py-10 sm:py-16 max-w-3xl">
 

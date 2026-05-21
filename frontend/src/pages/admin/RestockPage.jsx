@@ -49,7 +49,7 @@ const GRID = 'grid grid-cols-[1fr_auto] md:grid-cols-[1fr_76px_52px_44px] items-
 
 export const RestockPage = () => {
   const qc = useQueryClient();
-  const { data, isLoading }       = useProducts({ anyOutOfStock: true, limit: 200 });
+  const { data, isLoading, isError, refetch } = useProducts({ anyOutOfStock: true, limit: 200 });
   const { data: categories = [] } = useCategories();
   const toggleStock               = useToggleStock();
   const toggleVariantStock        = useToggleVariantStock();
@@ -167,13 +167,18 @@ export const RestockPage = () => {
         {item.demand > 0 && (
           <span className="md:hidden text-sm font-bold text-amber-600 tabular-nums leading-none">{item.demand}</span>
         )}
+        {/* 44x44 hit area for mobile per accessibility guidance — visual circle
+            stays 28x28 inside the padded button. */}
         <button
           onClick={() => setPendingRestock(item)}
           disabled={isPending}
           title="Mark as in stock"
-          className="h-7 w-7 rounded-full border border-green-300 flex items-center justify-center text-green-500 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
+          aria-label="Mark as in stock"
+          className="h-11 w-11 -mr-2 flex items-center justify-center transition-opacity duration-200 disabled:opacity-30 disabled:pointer-events-none group"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
+          <span className="h-7 w-7 rounded-full border border-green-300 flex items-center justify-center text-green-500 group-hover:bg-green-600 group-hover:text-white group-hover:border-green-600 transition-all duration-200">
+            <RotateCcw className="h-3.5 w-3.5" />
+          </span>
         </button>
       </div>
     </div>
@@ -275,8 +280,22 @@ export const RestockPage = () => {
       {/* Loading */}
       {isLoading && <LoadingSkeleton />}
 
+      {/* Error — distinct from "all in stock" so admin can retry */}
+      {!isLoading && isError && (
+        <div className="border border-border bg-card py-16 flex flex-col items-center gap-3 text-center px-4">
+          <p className="font-serif text-lg font-light text-muted-foreground/60">Couldn&apos;t load products</p>
+          <p className="text-xs text-muted-foreground/45 max-w-xs">Check your connection and try again.</p>
+          <button
+            onClick={() => refetch()}
+            className="mt-2 text-2xs tracking-[0.2em] uppercase font-light text-muted-foreground hover:text-foreground border-b border-border hover:border-foreground pb-0.5 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* All in stock */}
-      {!isLoading && allItems.length === 0 && (
+      {!isLoading && !isError && allItems.length === 0 && (
         <div className="border border-border bg-card py-20 flex flex-col items-center gap-3">
           <CheckCircle2 className="h-8 w-8 text-muted-foreground/20" />
           <div className="text-center">

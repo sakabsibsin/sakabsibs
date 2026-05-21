@@ -11,7 +11,7 @@ const fadeUp = (delay = 0) => ({
 });
 
 export const ContactPage = () => {
-  useEffect(() => { document.title = 'Contact — Sakab Sibs'; }, []);
+  useEffect(() => { document.title = 'Sakab Sibs — Contact'; }, []);
   const { data: settings } = useSettings();
   const whatsapp = settings?.whatsapp_number || '919110225313';
   const phone = settings?.store_phone || '';

@@ -1,0 +1,26 @@
+{
+  "name": "Sakab Sibs",
+  "short_name": "Sakab Sibs",
+  "description": "Tarnish free accessories — curated collections to make you shine",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#F5ECE0",
+  "theme_color": "#4A1E1E",
+  "icons": [
+    {
+      "src": "/sakabsibs-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/sakabsibs-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/sakabsibs-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

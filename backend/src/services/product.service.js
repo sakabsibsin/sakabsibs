@@ -10,8 +10,18 @@ const extractPublicId = (url) => {
   return match ? match[1] : null;
 };
 
+// Maps the public `sort` token to a Mongoose sort spec. `createdAt: -1` is
+// appended as a stable tiebreaker so paginated pages don't shuffle when two
+// products share the primary sort key.
+const SORT_SPECS = {
+  featured:   { featured: -1, createdAt: -1 },
+  price_asc:  { price: 1,  createdAt: -1 },
+  price_desc: { price: -1, createdAt: -1 },
+};
+const resolveSort = (sort) => SORT_SPECS[sort] ?? { createdAt: -1 };
+
 export const listProducts = async ({
-  category, inStock, featured, search,
+  category, inStock, featured, search, sort,
   limit = 20, offset = 0, anyOutOfStock,
 } = {}) => {
   const query = {};
@@ -33,7 +43,7 @@ export const listProducts = async ({
     ];
   }
   const [products, total] = await Promise.all([
-    Product.find(query).sort({ createdAt: -1 }).skip(offset).limit(limit),
+    Product.find(query).sort(resolveSort(sort)).skip(offset).limit(limit),
     Product.countDocuments(query),
   ]);
   return { products, total, hasMore: offset + products.length < total };
@@ -61,10 +71,15 @@ export const getProductStats = async () => {
 };
 
 export const createProduct = async (body) => {
+  // Master inStock mirrors variants: if all variants are OOS, master must also be OOS
+  let finalBody = body;
+  if (Array.isArray(body.variants) && body.variants.length > 0) {
+    finalBody = { ...body, inStock: body.variants.some((v) => v.inStock !== false) };
+  }
   for (let attempt = 0; attempt < 3; attempt++) {
-    const productCode = await generateProductCode(body.category);
+    const productCode = await generateProductCode(finalBody.category);
     try {
-      return await Product.create({ ...body, productCode });
+      return await Product.create({ ...finalBody, productCode });
     } catch (err) {
       if (err.code === 11000 && attempt < 2) continue;
       throw err;

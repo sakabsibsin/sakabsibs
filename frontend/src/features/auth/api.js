@@ -15,4 +15,7 @@ export const fetchAuthStatus = async () => {
 };
 
 export const fetchSettings  = async () => { const { data } = await apiClient.get('/settings'); return data.data; };
-export const updateSetting  = async (key, value) => { await apiClient.put(`/settings/${key}`, { value }); };
+export const updateSetting  = async (key, value) => {
+  const { data } = await apiClient.put(`/settings/${key}`, { value });
+  return data.data; // backend returns { success: true, data: {...} }
+};

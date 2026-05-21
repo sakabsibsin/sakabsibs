@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useUpdateSetting } from '@/features/auth/hooks';
 import { getApiError } from '@/lib/utils';
+import { removeToken } from '@/lib/apiClient';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Breadcrumb } from '@/components/admin/Breadcrumb';
 
 const inputCls = 'flex h-10 w-full border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground';
 const btnCls = 'h-12 px-8 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none';
 
 export const SettingsPage = () => {
+  const navigate = useNavigate();
   const { data: settings, isLoading } = useSettings();
   const update = useUpdateSetting();
 
@@ -36,9 +37,24 @@ export const SettingsPage = () => {
 
   const handleSavePassword = (e) => {
     e.preventDefault();
-    if (newPassword.length < 6) return toast.error('Password must be at least 6 characters.');
-    update.mutate({ key: 'admin_password', value: newPassword }, {
-      onSuccess: () => { toast.success('Password updated.'); setNewPassword(''); },
+    const trimmed = newPassword.trim();
+    if (trimmed.length < 6) return toast.error('Password must be at least 6 characters.');
+    update.mutate({ key: 'admin_password', value: trimmed }, {
+      onSuccess: (data) => {
+        setNewPassword('');
+        // Backend signals a password change — invalidate the current session
+        // by clearing the token and redirecting to login. The old JWT remains
+        // technically valid until expiry but is no longer attached to any request.
+        if (data?.passwordChanged) {
+          toast.success('Password changed. Please log in again.');
+          setTimeout(() => {
+            removeToken();
+            navigate('/admin/login');
+          }, 1500);
+        } else {
+          toast.success('Password updated.');
+        }
+      },
       onError: (err) => toast.error(getApiError(err, 'Failed to update password.')),
     });
   };
@@ -53,8 +69,6 @@ export const SettingsPage = () => {
 
   return (
     <div className="max-w-2xl space-y-8">
-      <Breadcrumb items={[{ label: 'Dashboard', to: '/admin/dashboard' }, { label: 'Settings' }]} />
-
       <div>
         <div className="flex items-center gap-3 mb-2">
           <Link
@@ -91,31 +105,6 @@ export const SettingsPage = () => {
               Enter your 10-digit number. The +91 country code is added automatically.
             </p>
           </div>
-          <div className="border-t border-border pt-5">
-            <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-widest">Message Preview</p>
-            <div className="bg-muted/50 border border-border p-4 text-xs font-mono text-muted-foreground leading-relaxed whitespace-pre">{`Hello 👋
-I'm interested in this product.
-
-*Product:* [Product Name]
-*Code:* [Product Code]
-*Price:* [Price]
-
-*Product Link:*
-[product URL]
-
-*Customer Details*
-Name: [Customer Name]
-Phone: [Phone Number]
-Alt. Phone: [Alt Number]
-
-Address:
-[House/Flat], [Street]
-Near [Landmark]
-[City] - [Pincode]
-[District], [State]
-
-Please share more details 😊`}</div>
-          </div>
           <div className="flex justify-end">
             <button type="submit" disabled={update.isPending} className={btnCls}>Save WhatsApp</button>
           </div>
@@ -128,10 +117,20 @@ Please share more details 😊`}</div>
         <form onSubmit={handleSavePassword} className="space-y-4">
           <div className="space-y-2">
             <label className="uppercase tracking-widest text-xs text-foreground">New Password</label>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 6 characters" className={inputCls} />
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Min 6 characters"
+              autoComplete="new-password"
+              className={inputCls}
+            />
+            <p className="text-xs text-muted-foreground/70">
+              You will be logged out and asked to sign in again after changing.
+            </p>
           </div>
           <div className="flex justify-end">
-            <button type="submit" disabled={update.isPending} className={btnCls}>
+            <button type="submit" disabled={update.isPending || !newPassword.trim()} className={btnCls}>
               {update.isPending ? 'Saving...' : 'Update Password'}
             </button>
           </div>

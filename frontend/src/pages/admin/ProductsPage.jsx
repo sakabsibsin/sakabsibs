@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Plus, SquarePen, Trash2, Search, X, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
-  useProducts,
+  useInfiniteProducts,
   useDeleteProduct,
   useToggleStock,
 } from "@/features/products/hooks";
 import { useCategories } from "@/features/categories/hooks";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Switch } from "@/components/ui/Switch";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -40,29 +42,54 @@ const SkeletonRows = () => (
 
 /* ── Page ─────────────────────────────────────────── */
 export const ProductsPage = () => {
-  const { data, isLoading } = useProducts({ limit: 200 });
-  const { data: categories = [] } = useCategories();
-  const allProducts = data?.products ?? [];
-  const deleteProduct = useDeleteProduct();
-  const toggleStock = useToggleStock();
-
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("ALL");
   const [deletingId, setDeletingId]       = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
 
-  const filtered = allProducts.filter((p) => {
-    const matchCat =
-      activeCategory === "ALL" ||
-      p.category.toLowerCase() === activeCategory.toLowerCase();
-    const q = search.toLowerCase().trim();
-    const matchSearch =
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      (p.productCode || "").toLowerCase().includes(q) ||
-      (p.material || "").toLowerCase().includes(q);
-    return matchCat && matchSearch;
+  const debouncedSearch  = useDebounce(search, 350);
+  const selectedCategory = activeCategory === "ALL" ? "" : activeCategory;
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteProducts({
+    search: debouncedSearch,
+    category: selectedCategory,
   });
+
+  const products   = data?.pages.flatMap((page) => page.products) ?? [];
+  const totalCount = data?.pages[0]?.total ?? 0;
+
+  const { data: categories = [] } = useCategories();
+  const deleteProduct = useDeleteProduct();
+  const toggleStock   = useToggleStock();
+
+  /* ── Infinite scroll observer ─────────────────── */
+  const sentinelRef = useRef(null);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '200px',
+      threshold: 0,
+    });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [handleObserver]);
 
   const handleDelete = (product) => setPendingDelete(product);
 
@@ -94,9 +121,9 @@ export const ProductsPage = () => {
             <h1 className="font-serif text-xl font-light tracking-tight">
               Products
             </h1>
-            {data && (
+            {!isLoading && (
               <span className="text-xs font-light text-muted-foreground/50 tabular-nums">
-                {filtered.length}/{data.total}
+                {totalCount} {totalCount === 1 ? 'product' : 'products'}
               </span>
             )}
           </div>
@@ -111,13 +138,13 @@ export const ProductsPage = () => {
       </div>
 
       {/* ── Search ───────────────────────────────── */}
-      <div className="relative mb-1.5">
+      <div className="relative mb-1">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/28 pointer-events-none" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, code or material..."
-          className="w-full h-10 pl-10 pr-9 text-[13px] bg-background border border-border/50 focus:border-foreground/20 placeholder:text-muted-foreground/28 focus:outline-none transition-colors duration-200"
+          className="w-full h-9 pl-10 pr-9 text-[13px] bg-background border border-border/50 focus:border-foreground/20 placeholder:text-muted-foreground/28 focus:outline-none transition-colors duration-200"
         />
         {search && (
           <button
@@ -155,7 +182,13 @@ export const ProductsPage = () => {
       <div className="flex-1 overflow-y-auto min-h-0 mt-0 pb-20">
         {isLoading ? (
           <SkeletonRows />
-        ) : filtered.length === 0 ? (
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-28 text-center">
+            <p className="font-serif text-2xl font-light text-muted-foreground/38">
+              Failed to load products
+            </p>
+          </div>
+        ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <p className="font-serif text-2xl font-light text-muted-foreground/38">
               {search || activeCategory !== "ALL"
@@ -173,8 +206,10 @@ export const ProductsPage = () => {
           </div>
         ) : (
           <table className="w-full text-sm border-collapse">
-            {/* sticky: h-14 = 56 px (AdminSidebar height) */}
-            <thead className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+            {/* sticky thead. -top-px and shadow extend coverage 1px upward to
+                eliminate the sub-pixel sliver of scrolled rows that browsers
+                briefly render above a top:0 sticky table header. */}
+            <thead className="sticky -top-px z-10 bg-background shadow-[0_-1px_0_0_hsl(var(--background))]">
               <tr className="border-b border-border/35">
                 <th className="w-[60px] pl-0 pr-2 py-2 text-left">
                   <span className="text-[9px] tracking-[0.28em] uppercase font-medium text-muted-foreground/70">
@@ -204,7 +239,7 @@ export const ProductsPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/15">
-              {filtered.map((product) => (
+              {products.map((product) => (
                 <tr
                   key={product.id}
                   className="group bg-background hover:bg-muted/20 transition-colors duration-150"
@@ -294,6 +329,40 @@ export const ProductsPage = () => {
               ))}
             </tbody>
           </table>
+        )}
+
+        {/* Sentinel — invisible trigger for intersection observer */}
+        <div ref={sentinelRef} className="h-1 w-full" aria-hidden="true" />
+
+        {/* Loading next page — three-dot wave loader, on-brand burgundy */}
+        {isFetchingNextPage && (
+          <div
+            className="flex items-center justify-center gap-2 py-8"
+            role="status"
+            aria-label="Loading more products"
+          >
+            {[0, 1, 2].map((i) => (
+              <motion.span
+                key={i}
+                aria-hidden="true"
+                className="block h-1.5 w-1.5 rounded-full bg-foreground"
+                animate={{ opacity: [0.18, 1, 0.18], y: [0, -2, 0] }}
+                transition={{
+                  duration: 1.05,
+                  repeat: Infinity,
+                  delay: i * 0.16,
+                  ease: 'easeInOut',
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* End of list */}
+        {!hasNextPage && products.length > 0 && !isLoading && (
+          <p className="text-center text-xs tracking-[0.2em] uppercase text-muted-foreground/50 py-6">
+            All {totalCount} products loaded
+          </p>
         )}
       </div>
 

@@ -20,8 +20,18 @@ export const ImageUpload = ({ images = [], onChange, maxImages = 8 }) => {
   const handleChange = (e) => {
     const picked = Array.from(e.target.files || []);
     const remaining = maxImages - images.length;
-    const valid = [];
 
+    // If admin picked more than available slots, warn before silently dropping the extras
+    if (picked.length > remaining) {
+      const dropped = picked.length - remaining;
+      toast.error(
+        remaining === 0
+          ? `You already have the maximum of ${maxImages} images. Remove one to add more.`
+          : `Only ${remaining} more image${remaining === 1 ? '' : 's'} can be added (max ${maxImages}). ${dropped} file${dropped === 1 ? ' was' : 's were'} skipped.`
+      );
+    }
+
+    const valid = [];
     for (const file of picked.slice(0, remaining)) {
       if (!file.type.startsWith('image/')) {
         toast.error(`"${file.name}" is not an image. Only JPEG, PNG, and WebP are supported.`);

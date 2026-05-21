@@ -3,12 +3,13 @@ import { sendSuccess, sendError } from '../utils/apiResponse.js';
 import * as productService from '../services/product.service.js';
 
 export const listProducts = asyncHandler(async (req, res) => {
-  const { category, inStock, featured, search, limit, offset, anyOutOfStock } = req.query;
+  const { category, inStock, featured, search, sort, limit, offset, anyOutOfStock } = req.query;
   const result = await productService.listProducts({
     category,
     inStock: inStock !== undefined ? inStock === 'true' : undefined,
     featured: featured !== undefined ? featured === 'true' : undefined,
     search,
+    sort,
     limit: limit ? parseInt(limit, 10) : undefined,
     offset: offset ? parseInt(offset, 10) : undefined,
     anyOutOfStock: anyOutOfStock === 'true',

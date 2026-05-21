@@ -13,17 +13,17 @@ export const productKeys = {
   stats: () => [...productKeys.all, 'stats'],
 };
 
-export const useProducts = (params = {}) =>
-  useQuery({ queryKey: productKeys.list(params), queryFn: () => api.fetchProducts(params) });
+export const useProducts = (params = {}, options = {}) =>
+  useQuery({ queryKey: productKeys.list(params), queryFn: () => api.fetchProducts(params), ...options });
 
-export const useFeaturedProducts = () =>
-  useQuery({ queryKey: productKeys.featured(), queryFn: api.fetchFeaturedProducts });
+export const useFeaturedProducts = (options = {}) =>
+  useQuery({ queryKey: productKeys.featured(), queryFn: api.fetchFeaturedProducts, ...options });
 
-export const useProduct = (id) =>
-  useQuery({ queryKey: productKeys.detail(id), queryFn: () => api.fetchProduct(id), enabled: !!id });
+export const useProduct = (id, options = {}) =>
+  useQuery({ queryKey: productKeys.detail(id), queryFn: () => api.fetchProduct(id), enabled: !!id, ...options });
 
-export const useProductStats = () =>
-  useQuery({ queryKey: productKeys.stats(), queryFn: api.fetchProductStats });
+export const useProductStats = (options = {}) =>
+  useQuery({ queryKey: productKeys.stats(), queryFn: api.fetchProductStats, ...options });
 
 // Create / Update / Delete — errors handled at callsite in ProductForm & ProductsPage
 export const useCreateProduct = () => {
@@ -101,10 +101,10 @@ export const useRegisterVariantDemand = () =>
     onError: (err) => toast.error(getApiError(err, 'Could not register your interest. Please try again.')),
   });
 
-export const useInfiniteProducts = ({ search = '', category = '', inStock = false } = {}) => {
+export const useInfiniteProducts = ({ search = '', category = '', sort = '' } = {}) => {
   return useInfiniteQuery({
-    queryKey: ['products', 'infinite', { search, category, inStock }],
-    queryFn: ({ pageParam }) => api.fetchProductsPage({ pageParam, search, category, inStock }),
+    queryKey: ['products', 'infinite', { search, category, sort }],
+    queryFn: ({ pageParam }) => api.fetchProductsPage({ pageParam, search, category, sort }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages, lastPageParam) => {
       if (!lastPage.hasMore) return undefined;

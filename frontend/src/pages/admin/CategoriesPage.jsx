@@ -145,7 +145,7 @@ export const CategoriesPage = () => {
             <button
               type="submit"
               disabled={create.isPending || !name.trim()}
-              className="w-full h-10 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
+              className="w-full h-11 min-h-[44px] bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Category
@@ -219,15 +219,17 @@ export const CategoriesPage = () => {
                     <div className="flex items-center justify-end gap-0.5">
                       <button
                         onClick={() => { setEditingId(cat.id); setEditName(cat.name); }}
-                        className="h-7 w-7 flex items-center justify-center text-primary/40 hover:text-primary transition-colors"
+                        className="h-7 w-7 min-h-[44px] flex items-center justify-center text-primary/40 hover:text-primary transition-colors"
                         title="Rename"
+                        aria-label="Rename category"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(cat)}
-                        className="h-7 w-7 flex items-center justify-center text-red-400/50 hover:text-red-600 transition-colors"
+                        className="h-7 w-7 min-h-[44px] flex items-center justify-center text-red-400/50 hover:text-red-600 transition-colors"
                         title="Delete"
+                        aria-label="Delete category"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -279,14 +281,14 @@ export const CategoriesPage = () => {
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setEditingId(null)}
-                  className="flex-1 h-10 border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
+                  className="flex-1 h-11 min-h-[44px] border border-border text-xs uppercase tracking-widest font-light hover:bg-muted transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleUpdate(categories.find((c) => c.id === editingId))}
                   disabled={update.isPending || !editName.trim()}
-                  className="flex-1 h-10 bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                  className="flex-1 h-11 min-h-[44px] bg-foreground text-background text-xs uppercase tracking-widest font-light hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                 >
                   {update.isPending ? "Saving…" : "Save"}
                 </button>

@@ -15,7 +15,7 @@ export const LoginPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
-    login.mutate(password, {
+    login.mutate(password.trim(), {
       onSuccess: () => navigate('/admin/dashboard'),
       onError: () => {
         setError('Incorrect password. Please try again.');

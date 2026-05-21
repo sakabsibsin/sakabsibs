@@ -10,7 +10,7 @@ const fadeUp = (delay = 0) => ({
 });
 
 export const AboutPage = () => {
-  useEffect(() => { document.title = 'About — Sakab Sibs'; }, []);
+  useEffect(() => { document.title = 'Sakab Sibs — About'; }, []);
   return (
   <div className="container-store py-10 sm:py-16 max-w-3xl">
     <motion.div {...fadeUp(0)} className="mb-8 space-y-3">

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, X } from 'lucide-react';
+import { Search, X, ArrowUpDown } from 'lucide-react';
 import { useInfiniteProducts } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -9,12 +9,20 @@ import { CategoryFilter } from '@/components/store/CategoryFilter';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 
+const sortOptions = [
+  { label: 'Default',             value: '' },
+  { label: 'Bestseller',          value: 'featured' },
+  { label: 'Price: Low to High',  value: 'price_asc' },
+  { label: 'Price: High to Low',  value: 'price_desc' },
+];
+
 export const CatalogPage = () => {
-  useEffect(() => { document.title = 'Shop — Sakab Sibs'; }, []);
+  useEffect(() => { document.title = 'Sakab Sibs — Shop'; }, []);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [inStock, setInStock] = useState(false);
+  const [sort, setSort] = useState('');
+  const [sortOpen, setSortOpen] = useState(false);
   const debouncedSearch = useDebounce(search, 350);
 
   const { data: categoriesData } = useCategories();
@@ -30,7 +38,7 @@ export const CatalogPage = () => {
   } = useInfiniteProducts({
     search: debouncedSearch,
     category: selectedCategory,
-    inStock,
+    sort,
   });
 
   const products = data?.pages.flatMap((page) => page.products) ?? [];
@@ -59,8 +67,9 @@ export const CatalogPage = () => {
   }, [handleObserver]);
 
   // ── Filters ───────────────────────────────────────────────────────────
-  const hasFilters = !!selectedCategory || !!debouncedSearch || inStock;
-  const clearAll = () => { setSearch(''); setSelectedCategory(''); setInStock(false); };
+  const hasFilters = !!selectedCategory || !!debouncedSearch || !!sort;
+  const clearAll = () => { setSearch(''); setSelectedCategory(''); setSort(''); };
+  const activeSortLabel = sortOptions.find((o) => o.value === sort)?.label;
 
   return (
     <motion.div
@@ -100,10 +109,10 @@ export const CatalogPage = () => {
         </div>
       )}
 
-      {/* Count + In Stock toggle row */}
+      {/* Count + Sort row */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <motion.p
-          key={`${totalCount}-${selectedCategory}-${inStock}`}
+          key={`${totalCount}-${selectedCategory}-${sort}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.25 }}
@@ -123,17 +132,46 @@ export const CatalogPage = () => {
               Clear
             </button>
           )}
-          <button
-            onClick={() => setInStock((v) => !v)}
-            className={cn(
-              'flex items-center h-9 px-3 border text-xs font-light transition-colors',
-              inStock
-                ? 'border-foreground text-foreground bg-foreground/5'
-                : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSortOpen((o) => !o)}
+              className={cn(
+                'flex items-center gap-2 h-9 px-3 border text-xs font-light transition-colors',
+                sort
+                  ? 'border-foreground text-foreground'
+                  : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground'
+              )}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              {activeSortLabel && sort ? activeSortLabel : 'Sort'}
+            </button>
+
+            {sortOpen && (
+              <>
+                {/* Click-outside catcher */}
+                <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-20 bg-background border border-border shadow-md min-w-[180px]">
+                  {sortOptions.map((opt) => (
+                    <button
+                      key={opt.value || 'default'}
+                      type="button"
+                      onClick={() => { setSort(opt.value); setSortOpen(false); }}
+                      className={cn(
+                        'w-full text-left px-4 py-2.5 text-xs transition-colors',
+                        sort === opt.value
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-          >
-            In Stock
-          </button>
+          </div>
         </div>
       </div>
 

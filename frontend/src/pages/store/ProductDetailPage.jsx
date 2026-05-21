@@ -13,7 +13,7 @@ const LoadingSkeleton = () => (
   <div className="container-store pt-4 sm:pt-6 pb-10 sm:pb-14">
     <Skeleton className="h-3 w-24 mb-5" />
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_0.88fr] lg:gap-16">
-      <Skeleton className="aspect-square w-full" />
+      <Skeleton className="aspect-[4/5] w-full" />
       <div className="space-y-5 pt-1">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-9 w-4/5" />
@@ -107,7 +107,7 @@ export const ProductDetailPage = () => {
   useEffect(() => {
     if (!product) return;
     const firstImage = getProductThumbnail(product);
-    document.title = `${product.name} — Sakab Sibs`;
+    document.title = `Sakab Sibs — ${product.name}`;
     const setMeta = (property, content) => {
       let el = document.querySelector(`meta[property="${property}"]`);
       if (!el) {
@@ -357,8 +357,11 @@ export const ProductDetailPage = () => {
             <div className="flex gap-2 overflow-x-auto pb-0.5">
               {activeImages.map((img, i) => (
                 <button key={img} onClick={() => setActiveImgIndex(i)}
-                  className={cn('h-[68px] w-[68px] flex-shrink-0 overflow-hidden transition-all duration-200',
-                    i === activeImgIndex ? 'ring-1 ring-foreground ring-offset-2 opacity-100' : 'opacity-40 hover:opacity-70'
+                  className={cn(
+                    'h-[68px] w-[68px] flex-shrink-0 overflow-hidden border transition-all duration-200',
+                    i === activeImgIndex
+                      ? 'border-foreground opacity-100'
+                      : 'border-transparent opacity-40 hover:opacity-70'
                   )}>
                   <img src={getCloudinaryThumb(img, 120)} alt="" className="w-full h-full object-cover" draggable={false} />
                 </button>
@@ -505,7 +508,7 @@ export const ProductDetailPage = () => {
                     : 'bg-foreground text-background hover:bg-foreground/85 active:scale-[0.98]'
                 )}
               >
-                {hasDemanded ? 'Interest Noted ✓' : registerDemand.isPending ? 'Noting...' : "I'm Interested"}
+                {hasDemanded ? 'Interest Noted ✓' : registerDemand.isPending ? 'Noting...' : "Request Restock"}
               </button>
               <p className="text-center text-2xs tracking-[0.12em] text-muted-foreground/45 font-light">
                 {hasDemanded

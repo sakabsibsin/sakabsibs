@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Trash2, Pencil } from 'lucide-react';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { Switch } from '@/components/ui/Switch';
 import { ImageUpload } from './ImageUpload';
 import {
@@ -18,7 +17,7 @@ import { cn, getApiError } from '@/lib/utils';
 import { getToken } from '@/lib/apiClient';
 import { useCreateProduct, useUpdateProduct, useProduct } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
-import { API_URL } from '@/constants/config';
+import { API_URL, MAX_IMAGES } from '@/constants/config';
 
 const schema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
@@ -132,6 +131,7 @@ const VariantModal = ({ open, onClose, initialData, onSave }) => {
           <ImageUpload
             images={draft.images}
             onChange={(imgs) => setDraft((d) => ({ ...d, images: imgs }))}
+            maxImages={MAX_IMAGES}
           />
           {errors.images && <p className="text-xs text-destructive mt-1">{errors.images}</p>}
         </div>
@@ -230,6 +230,9 @@ export const ProductForm = ({ productId }) => {
     },
   });
 
+  // Reset the form only when the product ID changes — NOT on every cache refresh.
+  // Depending on `product` would overwrite the admin's in-progress edits whenever
+  // React Query refetched the same product (e.g. window focus, mutation invalidation).
   useEffect(() => {
     if (product) {
       reset({
@@ -244,7 +247,8 @@ export const ProductForm = ({ productId }) => {
         variants: product.variants ?? [],
       });
     }
-  }, [product, reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, reset]);
 
   const images = watch('images');
   const inStock = watch('inStock');
@@ -440,6 +444,7 @@ export const ProductForm = ({ productId }) => {
                   <ImageUpload
                     images={images}
                     onChange={(imgs) => setValue('images', imgs, { shouldValidate: true })}
+                    maxImages={MAX_IMAGES}
                   />
                   {errors.images && <p className="text-xs text-destructive mt-1">{errors.images.message}</p>}
                 </>
@@ -480,7 +485,7 @@ export const ProductForm = ({ productId }) => {
                         )}
                       </div>
                       <div className="flex items-center">
-                        <div className="flex items-center justify-center w-10 h-8">
+                        <div className="flex items-center justify-center w-11 h-11">
                           <button
                             type="button"
                             onClick={() => {
@@ -490,36 +495,41 @@ export const ProductForm = ({ productId }) => {
                               setValue('inStock', updated.some(v => v.inStock !== false));
                             }}
                             title={allVariants?.[index]?.inStock === false ? 'Mark as In Stock' : 'Mark as Stock Out'}
-                            className="relative w-6 h-6 flex items-center justify-center focus:outline-none group"
+                            aria-label={allVariants?.[index]?.inStock === false ? 'Mark variant as in stock' : 'Mark variant as out of stock'}
+                            className="relative w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none group"
                           >
-                            <span className={cn(
-                              'absolute inset-0 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100',
-                              allVariants?.[index]?.inStock === false ? 'bg-red-400/20' : 'bg-green-400/20'
-                            )} />
-                            <span className={cn(
-                              'w-2.5 h-2.5 rounded-full ring-[2.5px] ring-offset-[2px] ring-offset-background transition-all duration-300 group-hover:scale-110',
-                              allVariants?.[index]?.inStock === false
-                                ? 'bg-red-500 ring-red-400/60'
-                                : 'bg-green-500 ring-green-400/60'
-                            )} />
+                            <span className="relative w-6 h-6 flex items-center justify-center">
+                              <span className={cn(
+                                'absolute inset-0 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100',
+                                allVariants?.[index]?.inStock === false ? 'bg-red-400/20' : 'bg-green-400/20'
+                              )} />
+                              <span className={cn(
+                                'w-2.5 h-2.5 rounded-full ring-[2.5px] ring-offset-[2px] ring-offset-background transition-all duration-300 group-hover:scale-110',
+                                allVariants?.[index]?.inStock === false
+                                  ? 'bg-red-500 ring-red-400/60'
+                                  : 'bg-green-500 ring-green-400/60'
+                              )} />
+                            </span>
                           </button>
                         </div>
-                        <div className="flex items-center justify-center w-10 h-8">
+                        <div className="flex items-center justify-center w-11 h-11">
                           <button
                             type="button"
                             onClick={() => openEditModal(index)}
                             title="Edit variant"
-                            className="w-7 h-7 flex items-center justify-center text-primary/40 hover:text-primary transition-colors"
+                            aria-label="Edit variant"
+                            className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center text-primary/40 hover:text-primary transition-colors"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <div className="flex items-center justify-center w-10 h-8">
+                        <div className="flex items-center justify-center w-11 h-11">
                           <button
                             type="button"
                             onClick={() => setDeleteIndex(index)}
                             title="Remove variant"
-                            className="w-7 h-7 flex items-center justify-center text-red-400/50 hover:text-red-600 transition-colors"
+                            aria-label="Remove variant"
+                            className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center text-red-400/50 hover:text-red-600 transition-colors"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -608,7 +618,22 @@ export const ProductForm = ({ productId }) => {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => setDeleteIndex(null)}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => { removeVariant(deleteIndex); setDeleteIndex(null); }}>
+          <AlertDialogAction onClick={() => {
+            // If the removed variant was the default, promote the first remaining
+            // variant to default so the catalog always has a defined entry-point.
+            const removingDefault = allVariants?.[deleteIndex]?.isDefault === true;
+            removeVariant(deleteIndex);
+            if (removingDefault) {
+              const remaining = (allVariants ?? []).filter((_, i) => i !== deleteIndex);
+              if (remaining.length > 0) {
+                // useFieldArray indices shift after remove — the new index 0 is
+                // whichever variant was previously at index 0 (or 1 if we just
+                // deleted index 0). updateVariant operates on the new array.
+                setTimeout(() => updateVariant(0, { ...remaining[0], isDefault: true }), 0);
+              }
+            }
+            setDeleteIndex(null);
+          }}>
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>
