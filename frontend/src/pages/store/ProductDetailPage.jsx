@@ -5,6 +5,7 @@ import { ArrowLeft, Link2, Check, ChevronLeft, ChevronRight } from 'lucide-react
 import { useProduct, useRegisterDemand, useRegisterVariantDemand } from '@/features/products/hooks';
 import { useSettings } from '@/features/auth/hooks';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
+import { WishlistButton } from '@/components/store/WishlistButton';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatPrice, cn, getProductThumbnail, getCloudinaryThumb } from '@/lib/utils';
 
@@ -267,6 +268,11 @@ export const ProductDetailPage = () => {
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           >
+            {/* Wishlist heart — floats over the gallery, top-right */}
+            <div className="absolute top-3 right-3 z-20">
+              <WishlistButton productId={product.id} productName={product.name} size="md" />
+            </div>
+
             {activeImages.length === 0 ? (
               <div className="w-full h-full flex items-center justify-center">
                 <span className="font-serif italic text-sm text-muted-foreground/40">No photo</span>
@@ -274,17 +280,20 @@ export const ProductDetailPage = () => {
             ) : (
               <>
                 <div className={`absolute inset-0 bg-muted transition-opacity duration-500 ${galleryLoaded ? 'opacity-0' : 'opacity-100'}`} />
-                <AnimatePresence mode="wait">
+                {/* No mode="wait" — images cross-fade simultaneously so there
+                    is never a blank frame between exit and entry. absolute inset-0
+                    lets both images occupy the same space during the overlap. */}
+                <AnimatePresence>
                   <motion.img
                     key={`${selectedVariant}-${activeImgIndex}`}
                     src={getCloudinaryThumb(activeImages[activeImgIndex], 1200)}
                     alt={product.name}
-                    className="w-full h-full object-cover object-center pointer-events-none"
+                    className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
                     onLoad={() => setGalleryLoaded(true)}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+                    transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
                     draggable={false}
                   />
                 </AnimatePresence>

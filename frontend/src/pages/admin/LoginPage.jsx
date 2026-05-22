@@ -67,6 +67,15 @@ export const LoginPage = () => {
             >
               {login.isPending ? 'Verifying...' : 'Enter'}
             </button>
+
+            <div className="text-center mt-4">
+              <Link
+                to="/admin/forgot-password"
+                className="text-xs text-muted-foreground/60 hover:text-foreground tracking-[0.15em] uppercase transition-colors duration-200"
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </form>
         </div>
 

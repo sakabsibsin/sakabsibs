@@ -17,3 +17,14 @@ export const authRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Forgot-password limit — 3 requests per 15 min per IP. Tight cap because
+// each request triggers an outbound email; an attacker hitting this in a
+// loop would flood the admin's inbox and burn Resend quota.
+export const forgotPasswordRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: { success: false, error: 'Too many reset requests. Try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

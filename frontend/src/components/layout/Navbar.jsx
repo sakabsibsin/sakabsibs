@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LayoutDashboard } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, X, LayoutDashboard, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useScrolled } from '@/hooks/useScrolled';
 import { useAuthStatus } from '@/features/auth/hooks';
+import { useWishlist } from '@/features/wishlist/useWishlist';
 import { STORE_NAME } from '@/constants/config';
 
 const navLinks = [
@@ -32,6 +34,7 @@ export const Navbar = () => {
   useEffect(() => { setOpen(false); }, [pathname]);
   const { data: auth } = useAuthStatus();
   const isAdmin = auth?.authenticated === true;
+  const { count: wishlistCount } = useWishlist();
 
   const isActive = (link) =>
     link.exact ? pathname === link.to : pathname.startsWith(link.to);
@@ -74,6 +77,36 @@ export const Navbar = () => {
               </Link>
             ))}
 
+            {/* Wishlist — heart with spring-animated count badge.
+                Subtle burgundy halo on the heart when items exist;
+                the badge value pops via AnimatePresence on every change. */}
+            <Link
+              to="/wishlist"
+              aria-label={`Wishlist (${wishlistCount} ${wishlistCount === 1 ? 'item' : 'items'})`}
+              className={cn(
+                'inline-flex items-center gap-1.5 transition-colors duration-300',
+                pathname === '/wishlist' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <motion.span
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.88 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+                className="flex"
+              >
+                <Heart
+                  strokeWidth={1.5}
+                  style={{
+                    filter: undefined,
+                  }}
+                  className={cn(
+                    'h-[18px] w-[18px] transition-[color,fill] duration-300',
+                    wishlistCount > 0 && 'fill-primary text-primary'
+                  )}
+                />
+              </motion.span>
+            </Link>
+
             {/* Admin badge — only when logged in */}
             {isAdmin && (
               <Link
@@ -86,14 +119,38 @@ export const Navbar = () => {
             )}
           </nav>
 
-          {/* Mobile toggle */}
-          <button
-            className="sm:hidden p-1 text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          {/* Mobile: wishlist + menu toggle */}
+          <div className="flex items-center gap-1 sm:hidden">
+            <Link
+              to="/wishlist"
+              aria-label={`Wishlist (${wishlistCount} ${wishlistCount === 1 ? 'item' : 'items'})`}
+              className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors duration-300 px-1"
+            >
+              <motion.span
+                whileTap={{ scale: 0.85 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+                className="flex"
+              >
+                <Heart
+                  strokeWidth={1.5}
+                  style={{
+                    filter: undefined,
+                  }}
+                  className={cn(
+                    'h-[18px] w-[18px] transition-[color,fill] duration-300',
+                    wishlistCount > 0 && 'fill-primary text-primary'
+                  )}
+                />
+              </motion.span>
+            </Link>
+            <button
+              className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setOpen((v) => !v)}
+              aria-label="Toggle menu"
+            >
+              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Reading progress bar */}

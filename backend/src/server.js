@@ -18,6 +18,9 @@ if (env.NODE_ENV === 'production') {
   if (process.env.ADMIN_DEFAULT_PASSWORD === 'aurum2024') {
     warn('ADMIN_DEFAULT_PASSWORD is still the seed default — change immediately via the Settings page');
   }
+  if (!process.env.RESEND_API_KEY) {
+    warn('MISSING ENV VAR: RESEND_API_KEY — forgot password emails will not work');
+  }
 }
 
 app.listen(env.PORT, '0.0.0.0', () => {

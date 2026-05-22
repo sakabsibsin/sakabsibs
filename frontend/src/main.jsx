@@ -22,7 +22,13 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <App />
-        <Toaster position="top-right" richColors />
+        <Toaster
+          position="top-right"
+          richColors
+          toastOptions={{
+            style: { borderRadius: '0px' },
+          }}
+        />
       </QueryClientProvider>
     </BrowserRouter>
   </StrictMode>

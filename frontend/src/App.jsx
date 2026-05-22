@@ -11,7 +11,10 @@ import { ProductDetailPage } from '@/pages/store/ProductDetailPage';
 import { AboutPage } from '@/pages/store/AboutPage';
 import { ContactPage } from '@/pages/store/ContactPage';
 import { PolicyPage } from '@/pages/store/PolicyPage';
+import { WishlistPage } from '@/pages/store/WishlistPage';
 import { LoginPage } from '@/pages/admin/LoginPage';
+import { ForgotPasswordPage } from '@/pages/admin/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/pages/admin/ResetPasswordPage';
 import { DashboardPage } from '@/pages/admin/DashboardPage';
 import { ProductsPage } from '@/pages/admin/ProductsPage';
 import { CategoriesPage } from '@/pages/admin/CategoriesPage';
@@ -78,10 +81,13 @@ export default function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/policy" element={<PolicyPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
       </Route>
 
       {/* ── Admin (protected via 401 redirect) ─ */}
       <Route path="/admin/login" element={<LoginPage />} />
+      <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/admin/reset-password" element={<ResetPasswordPage />} />
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
