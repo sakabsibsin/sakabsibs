@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Package, CheckCircle2, XCircle, Star, Plus, Tag, Settings, TrendingUp } from 'lucide-react';
-import { Breadcrumb } from '@/components/admin/Breadcrumb';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useProductStats, useProducts } from '@/features/products/hooks';
 import { cn } from '@/lib/utils';
@@ -34,7 +33,9 @@ export const DashboardPage = () => {
   ];
 
   return (
-    <div className="space-y-8">
+    // Standard rhythm: 24px between sections (space-y-6), 12px between cards
+    // (gap-3), 16px card padding (p-4). Every card on this page follows it.
+    <div className="space-y-6">
 
       <div>
         <h1 className="text-3xl font-serif tracking-wide mb-1">Dashboard</h1>
@@ -42,20 +43,20 @@ export const DashboardPage = () => {
       </div>
 
       {/* ── Stats ───────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {STATS.map(({ label, value, icon: Icon, accent }) => (
           <div
             key={label}
             className={cn(
-              'bg-card p-5 border',
+              'bg-card p-4 border',
               accent ? 'border-border border-l-2 border-l-red-300' : 'border-border'
             )}
           >
-            <Icon className="h-4 w-4 text-muted-foreground/40 mb-3" />
+            <Icon className="h-4 w-4 text-muted-foreground/40 mb-2" />
             {statsLoading ? (
-              <Skeleton className="h-8 w-12 mb-1" />
+              <Skeleton className="h-7 w-10 mb-1" />
             ) : (
-              <p className="text-3xl font-serif mb-1">{value ?? 0}</p>
+              <p className="text-2xl font-serif leading-none mb-1">{value ?? 0}</p>
             )}
             <p className="text-xs text-muted-foreground font-light">{label}</p>
           </div>
@@ -64,7 +65,7 @@ export const DashboardPage = () => {
 
       {/* ── Quick Actions ────────────────────────────────── */}
       <div>
-        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Quick Actions</p>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Quick Actions</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {QUICK_ACTIONS.map(({ label, sub, to, icon: Icon, primary }) => (
             <Link
@@ -90,7 +91,7 @@ export const DashboardPage = () => {
       {/* ── Restock Demand quick link ────────────────────── */}
       <Link
         to="/admin/restock"
-        className="group flex items-center justify-between w-full border border-border bg-card hover:border-foreground/40 hover:bg-muted/20 transition-all duration-200 px-5 py-4"
+        className="group flex items-center justify-between w-full border border-border bg-card hover:border-foreground/40 hover:bg-muted/20 transition-all duration-200 p-4"
       >
         <div className="flex items-center gap-3">
           <TrendingUp className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground/60 transition-colors" />

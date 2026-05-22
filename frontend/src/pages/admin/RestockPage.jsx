@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Search, X, RotateCcw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -9,8 +10,9 @@ import {
   AlertDialogDescription, AlertDialogFooter,
   AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/AlertDialog';
-import { useProducts, useToggleStock, useToggleVariantStock, productKeys } from '@/features/products/hooks';
+import { useInfiniteProducts, useToggleStock, useToggleVariantStock, productKeys } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
+import { useDebounce } from '@/hooks/useDebounce';
 import { getProductThumbnail, cn, getApiError } from '@/lib/utils';
 
 /* ── Flatten OOS items into flat sortable list ── */
@@ -49,37 +51,72 @@ const GRID = 'grid grid-cols-[1fr_auto] md:grid-cols-[1fr_76px_52px_44px] items-
 
 export const RestockPage = () => {
   const qc = useQueryClient();
-  const { data, isLoading, isError, refetch } = useProducts({ anyOutOfStock: true, limit: 200 });
   const { data: categories = [] } = useCategories();
-  const toggleStock               = useToggleStock();
-  const toggleVariantStock        = useToggleVariantStock();
+  const toggleStock        = useToggleStock();
+  const toggleVariantStock = useToggleVariantStock();
 
   const [search, setSearch]           = useState('');
   const [activeCategory, setCategory] = useState('ALL');
+  const debouncedSearch  = useDebounce(search, 350);
+  const selectedCategory = activeCategory === 'ALL' ? '' : activeCategory;
 
-  const allItems     = useMemo(() => flattenOos(data?.products ?? []), [data]);
+  // Mirrors the All Products page: server-paginated infinite query with
+  // anyOutOfStock + search/category pushed server-side so pagination doesn't
+  // silently hide search matches that haven't been fetched yet.
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    refetch,
+  } = useInfiniteProducts({
+    search: debouncedSearch,
+    category: selectedCategory,
+    anyOutOfStock: true,
+  });
+
+  const loadedProducts = useMemo(
+    () => data?.pages.flatMap((page) => page.products) ?? [],
+    [data]
+  );
+  const totalOos     = data?.pages[0]?.total ?? 0;
+  const allItems     = useMemo(() => flattenOos(loadedProducts), [loadedProducts]);
   const totalSignals = useMemo(() => allItems.reduce((s, i) => s + i.demand, 0), [allItems]);
 
-  const filtered = useMemo(() => {
-    let rows = allItems;
-    if (activeCategory !== 'ALL')
-      rows = rows.filter((r) => r.category?.toLowerCase() === activeCategory.toLowerCase());
-    if (search.trim())
-      rows = rows.filter((r) =>
-        r.name.toLowerCase().includes(search.toLowerCase()) ||
-        (r.variant_label ?? '').toLowerCase().includes(search.toLowerCase()) ||
-        (r.code ?? '').toLowerCase().includes(search.toLowerCase())
-      );
-    return rows;
-  }, [allItems, search, activeCategory]);
-
-  const withDemand       = filtered.filter((i) => i.demand > 0);
-  const noDemand         = filtered.filter((i) => i.demand === 0);
-  const isPending        = toggleStock.isPending || toggleVariantStock.isPending;
-  const isFiltered       = !!search.trim() || activeCategory !== 'ALL';
-  const chips            = ['ALL', ...categories.map((c) => c.name)];
+  // Search and category are server-side now — `allItems` already reflects
+  // the active filters, no second client-side pass needed.
+  const filtered   = allItems;
+  const withDemand = filtered.filter((i) => i.demand > 0);
+  const noDemand   = filtered.filter((i) => i.demand === 0);
+  const isPending  = toggleStock.isPending || toggleVariantStock.isPending;
+  const isFiltered = !!debouncedSearch.trim() || activeCategory !== 'ALL';
+  const chips      = ['ALL', ...categories.map((c) => c.name)];
   const [pendingRestock, setPendingRestock] = useState(null);
   const [selectedItem,   setSelectedItem]   = useState(null);
+
+  // ── Infinite scroll observer ─────────────────────
+  const sentinelRef = useRef(null);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '200px',
+      threshold: 0,
+    });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [handleObserver]);
 
   const confirmRestock = () => {
     if (!pendingRestock) return;
@@ -108,8 +145,15 @@ export const RestockPage = () => {
   };
 
   /* ── Table header ───────────────────────────── */
+  // sticky -top-px + shadow extends the bg 1px upward to eliminate the
+  // sub-pixel sliver browsers briefly render above a top:0 sticky element
+  // during fast scrolls. Same trick as the All Products thead.
+  // bg-muted is fully opaque so scrolled rows can't bleed through.
   const THead = () => (
-    <div className={cn(GRID, 'py-2.5 bg-muted/50 border-b border-border')}>
+    <div className={cn(
+      GRID,
+      'sticky -top-px z-10 py-2.5 bg-muted border-b border-border shadow-[0_-1px_0_0_hsl(var(--muted))]'
+    )}>
       <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold">Product</span>
       {/* desktop-only columns */}
       <span className="hidden md:block text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 font-semibold text-center">Code</span>
@@ -215,10 +259,13 @@ export const RestockPage = () => {
   );
 
   return (
-    <div className="max-w-2xl pb-12">
+    // Same height math as the All Products page: 100dvh minus the admin
+    // navbar (h-14 = 56px) minus the main element's vertical padding (2rem).
+    // Header + search + chips stay above this; only the inner div scrolls.
+    <div className="flex flex-col h-[calc(100dvh-56px-2rem)] min-h-0 overflow-hidden max-w-2xl">
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-5">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <Link
             to="/admin/dashboard"
@@ -228,10 +275,10 @@ export const RestockPage = () => {
           </Link>
           <h1 className="text-2xl font-serif tracking-wide truncate">Restock</h1>
         </div>
-        {!isLoading && allItems.length > 0 && (
+        {!isLoading && totalOos > 0 && (
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
-              <p className="text-lg font-serif tabular-nums leading-none">{allItems.length}</p>
+              <p className="text-lg font-serif tabular-nums leading-none">{totalOos}</p>
               <p className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground/40 mt-0.5">Out of Stock</p>
             </div>
             <div className="w-px h-7 bg-border" />
@@ -243,16 +290,17 @@ export const RestockPage = () => {
         )}
       </div>
 
-      {/* Search */}
-      {!isLoading && allItems.length > 0 && (
-        <div className="space-y-2.5 mb-4">
+      {/* Search — also visible while a filter is active so the user can clear
+          when results narrow to zero. */}
+      {!isLoading && (totalOos > 0 || isFiltered) && (
+        <div className="space-y-2 mb-2">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/30 pointer-events-none" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by product name, variant or code…"
-              className="w-full h-10 pl-10 pr-9 border border-border/50 bg-background text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:border-foreground/25 transition-colors"
+              className="w-full h-9 pl-10 pr-9 border border-border/50 bg-background text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:border-foreground/25 transition-colors"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors">
@@ -277,6 +325,11 @@ export const RestockPage = () => {
         </div>
       )}
 
+      {/* Scrollable content — header + search/chips stay sticky above; only
+          this region scrolls. The THead inside has its own sticky positioning
+          relative to this container. */}
+      <div className="flex-1 overflow-y-auto min-h-0 pb-12">
+
       {/* Loading */}
       {isLoading && <LoadingSkeleton />}
 
@@ -294,8 +347,8 @@ export const RestockPage = () => {
         </div>
       )}
 
-      {/* All in stock */}
-      {!isLoading && !isError && allItems.length === 0 && (
+      {/* All in stock — truly zero OOS products (no filter) */}
+      {!isLoading && !isError && totalOos === 0 && !isFiltered && (
         <div className="border border-border bg-card py-20 flex flex-col items-center gap-3">
           <CheckCircle2 className="h-8 w-8 text-muted-foreground/20" />
           <div className="text-center">
@@ -305,8 +358,8 @@ export const RestockPage = () => {
         </div>
       )}
 
-      {/* No filter match */}
-      {!isLoading && allItems.length > 0 && filtered.length === 0 && (
+      {/* No filter match — OOS products exist but none match the current filter */}
+      {!isLoading && totalOos === 0 && isFiltered && (
         <div className="border border-border bg-card py-12 flex flex-col items-center gap-2">
           <p className="text-sm text-muted-foreground/50">No results.</p>
           <button onClick={() => { setSearch(''); setCategory('ALL'); }} className="text-xs text-foreground/50 underline hover:text-foreground transition-colors">Clear filters</button>
@@ -325,12 +378,43 @@ export const RestockPage = () => {
         </div>
       )}
 
+      {/* Sentinel — invisible trigger for the infinite-scroll observer */}
+      <div ref={sentinelRef} className="h-1 w-full" aria-hidden="true" />
+
+      {/* Loading next page — same three-dot wave as the All Products page */}
+      {isFetchingNextPage && (
+        <div
+          className="flex items-center justify-center gap-2 py-8"
+          role="status"
+          aria-label="Loading more products"
+        >
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              aria-hidden="true"
+              className="block h-1.5 w-1.5 rounded-full bg-foreground"
+              animate={{ opacity: [0.18, 1, 0.18], y: [0, -2, 0] }}
+              transition={{ duration: 1.05, repeat: Infinity, delay: i * 0.16, ease: 'easeInOut' }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* End of list */}
+      {!hasNextPage && filtered.length > 0 && !isLoading && (
+        <p className="text-center text-xs tracking-[0.2em] uppercase text-muted-foreground/50 py-6">
+          All {totalOos} {totalOos === 1 ? 'item' : 'items'} loaded
+        </p>
+      )}
+
       {isFiltered && filtered.length > 0 && (
         <p className="mt-3 text-xs text-muted-foreground/35 text-center">
-          {filtered.length} of {allItems.length} items ·{' '}
+          Showing filtered results ·{' '}
           <button onClick={() => { setSearch(''); setCategory('ALL'); }} className="underline hover:text-foreground transition-colors">Clear</button>
         </p>
       )}
+
+      </div>{/* /scrollable content */}
 
       {/* ── Product detail modal ─────────────────── */}
       {selectedItem && (

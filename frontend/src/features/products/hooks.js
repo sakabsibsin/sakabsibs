@@ -101,10 +101,15 @@ export const useRegisterVariantDemand = () =>
     onError: (err) => toast.error(getApiError(err, 'Could not register your interest. Please try again.')),
   });
 
-export const useInfiniteProducts = ({ search = '', category = '', sort = '' } = {}) => {
+export const useInfiniteProducts = ({ search = '', category = '', sort = '', anyOutOfStock = false } = {}) => {
   return useInfiniteQuery({
-    queryKey: ['products', 'infinite', { search, category, sort }],
-    queryFn: ({ pageParam }) => api.fetchProductsPage({ pageParam, search, category, sort }),
+    // Nest under productKeys.lists() so mutations that invalidate the list
+    // prefix (toggle stock, delete, create) also bust this infinite cache.
+    // Previously `['products', 'infinite', ...]` was a sibling of
+    // `['products', 'list']`, so `productKeys.lists()` invalidations never
+    // reached the paginated query.
+    queryKey: [...productKeys.lists(), 'infinite', { search, category, sort, anyOutOfStock }],
+    queryFn: ({ pageParam }) => api.fetchProductsPage({ pageParam, search, category, sort, anyOutOfStock }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages, lastPageParam) => {
       if (!lastPage.hasMore) return undefined;

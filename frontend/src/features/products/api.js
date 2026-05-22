@@ -53,13 +53,14 @@ export const registerVariantDemand = async (productId, variantId) => {
   return data.data;
 };
 
-export const fetchProductsPage = async ({ pageParam = 0, search, category, sort }) => {
+export const fetchProductsPage = async ({ pageParam = 0, search, category, sort, anyOutOfStock }) => {
   const params = new URLSearchParams();
   params.set('limit', PAGE_SIZE);
   params.set('offset', pageParam);
   if (search) params.set('search', search);
   if (category) params.set('category', category);
   if (sort) params.set('sort', sort);
+  if (anyOutOfStock) params.set('anyOutOfStock', 'true');
   const { data } = await apiClient.get(`/products?${params.toString()}`);
   return data.data; // returns { products, total, hasMore }
 };

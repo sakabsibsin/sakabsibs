@@ -26,22 +26,32 @@ export const listProducts = async ({
 } = {}) => {
   const query = {};
   if (category) query.category = category;
-
-  if (anyOutOfStock) {
-    query.$or = [{ inStock: false }, { 'variants.inStock': false }];
-  } else if (inStock !== undefined) {
-    query.inStock = inStock;
-  }
-
   if (featured !== undefined) query.featured = featured;
-  if (search) {
-    query.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { productCode: { $regex: search, $options: 'i' } },
-      { material: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } },
-    ];
+
+  // Each clause that uses $or must live in its own slot under $and, otherwise
+  // a second $or assignment silently overwrites the first. This bit the
+  // Restock page (anyOutOfStock + search) — searches were returning in-stock
+  // products because the search $or replaced the OOS $or.
+  const andClauses = [];
+  if (anyOutOfStock) {
+    andClauses.push({ $or: [{ inStock: false }, { 'variants.inStock': false }] });
+  } else if (inStock !== undefined) {
+    andClauses.push({ inStock });
   }
+  if (search) {
+    andClauses.push({
+      $or: [
+        { name: { $regex: search, $options: 'i' } },
+        { productCode: { $regex: search, $options: 'i' } },
+        { material: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        // Match variant color so admins can find an OOS variant by its name.
+        { 'variants.color': { $regex: search, $options: 'i' } },
+      ],
+    });
+  }
+  if (andClauses.length) query.$and = andClauses;
+
   const [products, total] = await Promise.all([
     Product.find(query).sort(resolveSort(sort)).skip(offset).limit(limit),
     Product.countDocuments(query),
