@@ -38,7 +38,9 @@ export const SettingsPage = () => {
   const handleSavePassword = (e) => {
     e.preventDefault();
     const trimmed = newPassword.trim();
-    if (trimmed.length < 6) return toast.error('Password must be at least 6 characters.');
+    // Server enforces 8 chars (auth.controller resetPassword + setting.controller upsert).
+    // Mirror it here so the user gets immediate feedback instead of a round-trip rejection.
+    if (trimmed.length < 8) return toast.error('Password must be at least 8 characters.');
     update.mutate({ key: 'admin_password', value: trimmed }, {
       onSuccess: (data) => {
         setNewPassword('');

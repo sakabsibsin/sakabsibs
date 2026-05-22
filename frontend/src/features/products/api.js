@@ -17,6 +17,10 @@ export const fetchProductStats = async () => {
   const { data } = await apiClient.get('/products/stats');
   return data.data;
 };
+export const fetchRestockStats = async () => {
+  const { data } = await apiClient.get('/products/restock-stats');
+  return data.data;
+};
 export const createProduct = async (body) => {
   const { data } = await apiClient.post('/products', body);
   return data.data;
@@ -53,7 +57,7 @@ export const registerVariantDemand = async (productId, variantId) => {
   return data.data;
 };
 
-export const fetchProductsPage = async ({ pageParam = 0, search, category, sort, anyOutOfStock }) => {
+export const fetchProductsPage = async ({ pageParam = 0, search, category, sort, anyOutOfStock, featured }) => {
   const params = new URLSearchParams();
   params.set('limit', PAGE_SIZE);
   params.set('offset', pageParam);
@@ -61,6 +65,7 @@ export const fetchProductsPage = async ({ pageParam = 0, search, category, sort,
   if (category) params.set('category', category);
   if (sort) params.set('sort', sort);
   if (anyOutOfStock) params.set('anyOutOfStock', 'true');
+  if (featured) params.set('featured', 'true');
   const { data } = await apiClient.get(`/products?${params.toString()}`);
   return data.data; // returns { products, total, hasMore }
 };

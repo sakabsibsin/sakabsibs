@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Package, RefreshCcw, MessageCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Package, RefreshCcw, MessageCircle, ArrowLeft } from 'lucide-react';
 
+// Store-page rule: pure opacity, no translate motion.
 const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
   transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1], delay },
 });
 
@@ -39,8 +40,17 @@ const sections = [
 
 export const PolicyPage = () => {
   useEffect(() => { document.title = 'Sakab Sibs — Shipping & Returns'; }, []);
+  const navigate = useNavigate();
   return (
-  <div className="container-store py-10 sm:py-16 max-w-3xl">
+  <div className="container-store pt-4 pb-10 sm:pt-6 sm:pb-16 max-w-3xl">
+
+    <button
+      onClick={() => navigate(-1)}
+      className="group inline-flex items-center gap-2 mb-5 text-muted-foreground hover:text-foreground transition-colors duration-200"
+    >
+      <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+      <span className="text-2xs tracking-[0.25em] uppercase font-light">Back</span>
+    </button>
 
     {/* Header */}
     <motion.div {...fadeUp(0)} className="mb-10 space-y-3">

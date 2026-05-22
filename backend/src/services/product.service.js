@@ -39,14 +39,18 @@ export const listProducts = async ({
     andClauses.push({ inStock });
   }
   if (search) {
+    // Escape regex special characters so a customer searching for "(a+)+$"
+    // doesn't trigger catastrophic backtracking (ReDoS). Also cap length to
+    // prevent absurdly long pattern compilation.
+    const safe = search.toString().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     andClauses.push({
       $or: [
-        { name: { $regex: search, $options: 'i' } },
-        { productCode: { $regex: search, $options: 'i' } },
-        { material: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
+        { name: { $regex: safe, $options: 'i' } },
+        { productCode: { $regex: safe, $options: 'i' } },
+        { material: { $regex: safe, $options: 'i' } },
+        { description: { $regex: safe, $options: 'i' } },
         // Match variant color so admins can find an OOS variant by its name.
-        { 'variants.color': { $regex: search, $options: 'i' } },
+        { 'variants.color': { $regex: safe, $options: 'i' } },
       ],
     });
   }
@@ -63,6 +67,47 @@ export const getFeaturedProducts = () =>
   Product.find({ featured: true, inStock: true }).sort({ createdAt: -1 }).limit(12);
 
 export const getProduct = (id) => Product.findById(id);
+
+// Aggregate sum of demand counts across every OOS product/variant in the
+// collection — used by the Restock page header so the "Signals" count
+// reflects ALL pending interest, not just whatever's loaded on screen.
+// One pipeline call, runs in a single round-trip; doesn't pull product
+// documents back to Node.
+export const getRestockStats = async () => {
+  const result = await Product.aggregate([
+    { $match: { $or: [{ inStock: false }, { 'variants.inStock': false }] } },
+    {
+      $project: {
+        productDemand: {
+          $cond: [{ $eq: ['$inStock', false] }, { $ifNull: ['$demandCount', 0] }, 0],
+        },
+        variantDemand: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: { $ifNull: ['$variants', []] },
+                  as: 'v',
+                  cond: { $eq: ['$$v.inStock', false] },
+                },
+              },
+              as: 'v',
+              in: { $ifNull: ['$$v.demandCount', 0] },
+            },
+          },
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalSignals: { $sum: { $add: ['$productDemand', '$variantDemand'] } },
+        outOfStockCount: { $sum: 1 },
+      },
+    },
+  ]);
+  return result[0] ?? { totalSignals: 0, outOfStockCount: 0 };
+};
 
 export const getProductStats = async () => {
   const [total, inStockCount, featuredCount, categoryAgg] = await Promise.all([

@@ -27,6 +27,11 @@ export const getProductStats = asyncHandler(async (_req, res) => {
   sendSuccess(res, stats);
 });
 
+export const getRestockStats = asyncHandler(async (_req, res) => {
+  const stats = await productService.getRestockStats();
+  sendSuccess(res, stats);
+});
+
 export const getProduct = asyncHandler(async (req, res) => {
   const product = await productService.getProduct(req.params.id);
   if (!product) return sendError(res, 'Product not found', 404);

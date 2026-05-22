@@ -1,18 +1,31 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { STORE_NAME } from '@/constants/config';
 
+// Store-page rule: pure opacity, no translate motion. (Admin pages may use y/translate.)
 const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
   transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1], delay },
 });
 
 export const AboutPage = () => {
   useEffect(() => { document.title = 'Sakab Sibs — About'; }, []);
+  const navigate = useNavigate();
   return (
-  <div className="container-store py-10 sm:py-16 max-w-3xl">
+  // Reduced top padding because the back link now occupies that top region —
+  // total vertical space is unchanged from the original `py-10 sm:py-16`.
+  <div className="container-store pt-4 pb-10 sm:pt-6 sm:pb-16 max-w-3xl">
+    <button
+      onClick={() => navigate(-1)}
+      className="group inline-flex items-center gap-2 mb-5 text-muted-foreground hover:text-foreground transition-colors duration-200"
+    >
+      <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+      <span className="text-2xs tracking-[0.25em] uppercase font-light">Back</span>
+    </button>
+
     <motion.div {...fadeUp(0)} className="mb-8 space-y-3">
       <p className="label-overline">Our Story</p>
       <h1 className="font-serif text-[2.5rem] font-light leading-tight">About {STORE_NAME}</h1>

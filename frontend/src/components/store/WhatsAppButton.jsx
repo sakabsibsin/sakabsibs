@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// All 10 fields are required by the admin's data-collection process. To keep
+// completion rates high despite the length, the form is split into two steps:
+// (1) Contact — Name, Phone, Alt. Phone, and (2) Delivery Address — the rest.
+// User commits to step 1 with just 3 fields; sunk-cost momentum carries them
+// through step 2.
 const EMPTY = {
   fullName: '',
   phone: '',
@@ -16,7 +21,7 @@ const EMPTY = {
 };
 
 const inputCls =
-  'w-full h-10 bg-transparent border-b border-border text-sm px-0 placeholder:text-muted-foreground/55 focus:outline-none focus:border-foreground transition-colors duration-200';
+  'w-full h-11 bg-transparent border-b border-border text-sm px-0 placeholder:text-muted-foreground/55 focus:outline-none focus:border-foreground transition-colors duration-200';
 const labelCls = 'block text-[10px] uppercase tracking-[0.2em] text-foreground/60 mb-1.5 font-medium';
 
 export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, disabled = false }) => {
@@ -24,16 +29,38 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
   const [closing, setClosing] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
+  // Wizard step: 1 = Contact (Name/Phone/Alt), 2 = Delivery Address.
+  const [step, setStep] = useState(1);
 
-  // Lock body scroll while modal is open
+  // Lock body scroll + listen for Escape to close while the modal is open.
+  // Modal accessibility basics: keyboard users expect Esc to dismiss.
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
+    if (!open) {
       document.body.style.overflow = '';
+      return;
     }
-    return () => { document.body.style.overflow = ''; };
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') setClosing(true); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
   }, [open]);
+
+  // No admin WhatsApp number configured → show a clear "not yet available"
+  // state instead of letting the user submit and have wa.me/?text=... open
+  // a useless contact-picker. Same visual treatment as the disabled state.
+  if (!phoneNumber || !phoneNumber.toString().trim()) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center gap-1 border border-border/60 bg-muted/20 py-5">
+        <p className="text-xs uppercase tracking-[0.25em] font-light text-muted-foreground">
+          Ordering Not Yet Available
+        </p>
+        <p className="text-2xs text-muted-foreground/50 font-light">Reach us on Instagram</p>
+      </div>
+    );
+  }
 
   if (disabled) {
     return (
@@ -59,29 +86,53 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
     if (errors[field]) setErrors((er) => ({ ...er, [field]: '' }));
   };
 
-  const validate = () => {
-    const required = ['fullName', 'phone', 'houseName', 'street', 'city', 'district', 'state', 'pincode'];
+  // Step-scoped validation so "Continue" only blocks on step-1 issues. The
+  // final submit re-validates everything as a belt-and-suspenders check in
+  // case someone managed to bypass the wizard.
+  const validateStep1 = () => {
     const next = {};
-    required.forEach((k) => { if (!form[k].trim()) next[k] = 'Required'; });
-    if (form.fullName.trim() && form.fullName.trim().length < 2) next.fullName = 'Enter your full name';
-    if (form.phone && !/^[6-9]\d{9}$/.test(form.phone)) next.phone = 'Enter a valid 10-digit mobile number';
+    if (!form.fullName.trim()) next.fullName = 'Required';
+    else if (form.fullName.trim().length < 2) next.fullName = 'Enter your full name';
+    if (!form.phone.trim()) next.phone = 'Required';
+    else if (!/^[6-9]\d{9}$/.test(form.phone)) next.phone = 'Enter a valid 10-digit mobile number';
     if (form.altPhone && !/^[6-9]\d{9}$/.test(form.altPhone)) next.altPhone = 'Enter a valid 10-digit mobile number';
     if (form.phone && form.altPhone && form.phone === form.altPhone) next.altPhone = 'Must be different from primary number';
+    setErrors((prev) => ({ ...prev, ...next, fullName: next.fullName || '', phone: next.phone || '', altPhone: next.altPhone || '' }));
+    return !next.fullName && !next.phone && !next.altPhone;
+  };
+
+  const validateStep2 = () => {
+    const required = ['houseName', 'street', 'city', 'district', 'state', 'pincode'];
+    const next = {};
+    required.forEach((k) => { if (!form[k].trim()) next[k] = 'Required'; });
     if (form.pincode && !/^\d{6}$/.test(form.pincode)) next.pincode = 'Enter a valid 6-digit pincode';
-    setErrors(next);
+    setErrors((prev) => ({ ...prev, ...next }));
     return Object.keys(next).length === 0;
   };
 
+  const validate = () => validateStep1() && validateStep2();
+
+  const goNext = () => {
+    if (validateStep1()) setStep(2);
+  };
+  const goBack = () => setStep(1);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+      // If step-1 fails, snap back so the user sees and fixes the issue.
+      if (!validateStep1()) setStep(1);
+      return;
+    }
 
     const productUrl = window.location.href;
-
     const addressLine2 = [form.district.trim(), form.state.trim()].filter(Boolean).join(', ');
 
+    // Plain ASCII only — emojis can render as the Unicode replacement
+    // character (�) in WhatsApp depending on the client / URL-encoding path,
+    // so we keep the message text-only.
     const lines = [
-      `Hello 👋`,
+      `Hello,`,
       `I'm interested in this product.`,
       ``,
       `*Product:* ${productName}`,
@@ -102,7 +153,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
       `${form.city.trim()} - ${form.pincode.trim()}`,
       addressLine2,
       ``,
-      `Please share more details 😊`,
+      `Please share more details.`,
     ].filter((l) => l !== null);
 
     const msg = encodeURIComponent(lines.join('\n'));
@@ -113,6 +164,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
     setOpen(false);
     setForm(EMPTY);
     setErrors({});
+    setStep(1);
   };
 
   const close = () => {
@@ -126,6 +178,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
       setOpen(false);
       setClosing(false);
       setErrors({});
+      setStep(1); // re-open should start at step 1
     }
   };
 
@@ -163,13 +216,19 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-border/40 shrink-0">
               <div>
-                <h2 className="font-serif text-xl font-light">Order Details</h2>
+                <h2 className="font-serif text-xl font-light">Your Details</h2>
                 <p className="text-xs text-muted-foreground/65 mt-0.5 font-light">
-                  We'll include these in your WhatsApp message
+                  Step {step} of 2 · {step === 1 ? 'Contact' : 'Delivery Address'}
                 </p>
+                {/* Two progress bars — filled segments grow with step */}
+                <div className="flex gap-1.5 mt-2.5">
+                  <div className={cn('h-[2px] w-7 transition-colors duration-300', step >= 1 ? 'bg-foreground' : 'bg-border')} />
+                  <div className={cn('h-[2px] w-7 transition-colors duration-300', step >= 2 ? 'bg-foreground' : 'bg-border')} />
+                </div>
               </div>
               <button
                 onClick={close}
+                aria-label="Close order form"
                 className="h-8 w-8 flex items-center justify-center text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
               >
                 <X className="h-4 w-4" />
@@ -177,7 +236,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
             </div>
 
             {/* Scrollable form body */}
-            <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-6 space-y-6">
+            <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-6 space-y-5">
 
               {/* Product summary pill */}
               <div className="bg-muted/30 border border-border/40 px-4 py-3 flex items-center gap-3">
@@ -190,10 +249,8 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                 </div>
               </div>
 
-              {/* Contact */}
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/60 mb-4 font-medium">Contact</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+              {step === 1 && (
+                <div className="space-y-5">
                   <div>
                     <label className={labelCls}>Full Name *</label>
                     <input
@@ -202,6 +259,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                       placeholder="Your full name"
                       className={inputCls}
                       autoComplete="name"
+                      autoFocus
                       maxLength={60}
                     />
                     {errors.fullName && <p className="text-[10px] text-destructive mt-1">{errors.fullName}</p>}
@@ -221,8 +279,10 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                     />
                     {errors.phone && <p className="text-[10px] text-destructive mt-1">{errors.phone}</p>}
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className={labelCls}>Alternative Number <span className="normal-case tracking-normal text-muted-foreground/30">optional</span></label>
+                  <div>
+                    <label className={labelCls}>
+                      Alternative Number <span className="normal-case tracking-normal text-muted-foreground/30">optional</span>
+                    </label>
                     <input
                       value={form.altPhone}
                       onChange={setDigits('altPhone', 10)}
@@ -237,13 +297,9 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                     {errors.altPhone && <p className="text-[10px] text-destructive mt-1">{errors.altPhone}</p>}
                   </div>
                 </div>
-              </div>
+              )}
 
-              <hr className="border-border/30" />
-
-              {/* Address */}
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground/60 mb-4 font-medium">Delivery Address</p>
+              {step === 2 && (
                 <div className="space-y-5">
                   <div>
                     <label className={labelCls}>House / Flat Name *</label>
@@ -253,6 +309,7 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                       placeholder="House name or flat number"
                       className={inputCls}
                       autoComplete="address-line1"
+                      autoFocus
                       maxLength={80}
                     />
                     {errors.houseName && <p className="text-[10px] text-destructive mt-1">{errors.houseName}</p>}
@@ -270,7 +327,9 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                     {errors.street && <p className="text-[10px] text-destructive mt-1">{errors.street}</p>}
                   </div>
                   <div>
-                    <label className={labelCls}>Landmark <span className="normal-case tracking-normal text-muted-foreground/30">optional</span></label>
+                    <label className={labelCls}>
+                      Landmark <span className="normal-case tracking-normal text-muted-foreground/30">optional</span>
+                    </label>
                     <input
                       value={form.landmark}
                       onChange={set('landmark')}
@@ -332,22 +391,54 @@ export const WhatsAppButton = ({ phoneNumber, productName, productCode, price, d
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Trust line — only on step 2 where we ask for the address */}
+              {step === 2 && (
+                <p className="text-[10px] text-muted-foreground/50 leading-relaxed font-light pt-1">
+                  We only use this to deliver your order. Nothing is stored on our website.
+                </p>
+              )}
             </form>
 
             {/* Footer */}
             <div className="px-6 pb-6 pt-4 border-t border-border/40 shrink-0">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="w-full flex items-center justify-center gap-3 bg-foreground text-background h-13 hover:bg-foreground/88 active:scale-[0.985] transition-all duration-200"
-                style={{ minHeight: '52px' }}
-              >
-                <MessageCircle className="h-4 w-4 opacity-70" strokeWidth={1.5} />
-                <span className="text-xs tracking-[0.22em] uppercase font-light">Send via WhatsApp</span>
-              </button>
+              {step === 1 ? (
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="w-full flex items-center justify-center gap-3 bg-foreground text-background hover:bg-foreground/88 active:scale-[0.985] transition-all duration-200"
+                  style={{ minHeight: '52px' }}
+                >
+                  <span className="text-xs tracking-[0.22em] uppercase font-light">Continue</span>
+                  <span aria-hidden className="text-base leading-none">→</span>
+                </button>
+              ) : (
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="flex items-center justify-center gap-2 px-5 border border-border hover:border-foreground/40 hover:bg-muted/30 transition-all duration-200 shrink-0"
+                    style={{ minHeight: '52px' }}
+                  >
+                    <span aria-hidden className="text-base leading-none">←</span>
+                    <span className="text-xs tracking-[0.22em] uppercase font-light">Back</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="flex-1 flex items-center justify-center gap-3 bg-foreground text-background hover:bg-foreground/88 active:scale-[0.985] transition-all duration-200"
+                    style={{ minHeight: '52px' }}
+                  >
+                    <MessageCircle className="h-4 w-4 opacity-70" strokeWidth={1.5} />
+                    <span className="text-xs tracking-[0.22em] uppercase font-light">Send via WhatsApp</span>
+                  </button>
+                </div>
+              )}
               <p className="text-center text-[10px] text-muted-foreground/35 mt-3 font-light">
-                Opens WhatsApp with your details pre-filled
+                {step === 1
+                  ? 'Then just a few address details to finish'
+                  : 'Opens WhatsApp with your details pre-filled'}
               </p>
             </div>
           </div>

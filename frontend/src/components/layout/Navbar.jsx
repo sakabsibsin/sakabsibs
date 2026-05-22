@@ -96,9 +96,6 @@ export const Navbar = () => {
               >
                 <Heart
                   strokeWidth={1.5}
-                  style={{
-                    filter: undefined,
-                  }}
                   className={cn(
                     'h-[18px] w-[18px] transition-[color,fill] duration-300',
                     wishlistCount > 0 && 'fill-primary text-primary'
@@ -133,9 +130,6 @@ export const Navbar = () => {
               >
                 <Heart
                   strokeWidth={1.5}
-                  style={{
-                    filter: undefined,
-                  }}
                   className={cn(
                     'h-[18px] w-[18px] transition-[color,fill] duration-300',
                     wishlistCount > 0 && 'fill-primary text-primary'

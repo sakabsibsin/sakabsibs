@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getApiError } from '@/lib/utils';
 import { PAGE_SIZE } from '@/constants/config';
@@ -11,6 +11,9 @@ export const productKeys = {
   featured: () => [...productKeys.all, 'featured'],
   detail: (id) => [...productKeys.all, 'detail', id],
   stats: () => [...productKeys.all, 'stats'],
+  // Aggregate "total signals" across all OOS products — used by RestockPage
+  // header so the count doesn't depend on how many pages are loaded.
+  restockStats: () => [...productKeys.all, 'restock-stats'],
 };
 
 export const useProducts = (params = {}, options = {}) =>
@@ -24,6 +27,9 @@ export const useProduct = (id, options = {}) =>
 
 export const useProductStats = (options = {}) =>
   useQuery({ queryKey: productKeys.stats(), queryFn: api.fetchProductStats, ...options });
+
+export const useRestockStats = (options = {}) =>
+  useQuery({ queryKey: productKeys.restockStats(), queryFn: api.fetchRestockStats, ...options });
 
 // Create / Update / Delete — errors handled at callsite in ProductForm & ProductsPage
 export const useCreateProduct = () => {
@@ -70,6 +76,10 @@ export const useToggleStock = () => {
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: productKeys.detail(id) });
       qc.invalidateQueries({ queryKey: productKeys.lists() });
+      qc.invalidateQueries({ queryKey: productKeys.stats() });
+      // Restocking resets demandCount to 0 server-side — total signals
+      // changes too, so refresh the aggregate.
+      qc.invalidateQueries({ queryKey: productKeys.restockStats() });
     },
     onError: (err) => toast.error(getApiError(err, 'Failed to update stock. Please try again.')),
   });
@@ -83,6 +93,8 @@ export const useToggleVariantStock = () => {
     onSuccess: (_data, { productId }) => {
       qc.invalidateQueries({ queryKey: productKeys.detail(productId) });
       qc.invalidateQueries({ queryKey: productKeys.lists() });
+      qc.invalidateQueries({ queryKey: productKeys.stats() });
+      qc.invalidateQueries({ queryKey: productKeys.restockStats() });
     },
     onError: (err) => toast.error(getApiError(err, 'Failed to update variant stock.')),
   });
@@ -101,20 +113,25 @@ export const useRegisterVariantDemand = () =>
     onError: (err) => toast.error(getApiError(err, 'Could not register your interest. Please try again.')),
   });
 
-export const useInfiniteProducts = ({ search = '', category = '', sort = '', anyOutOfStock = false } = {}) => {
+export const useInfiniteProducts = ({ search = '', category = '', sort = '', anyOutOfStock = false, featured = false } = {}) => {
   return useInfiniteQuery({
     // Nest under productKeys.lists() so mutations that invalidate the list
     // prefix (toggle stock, delete, create) also bust this infinite cache.
     // Previously `['products', 'infinite', ...]` was a sibling of
     // `['products', 'list']`, so `productKeys.lists()` invalidations never
     // reached the paginated query.
-    queryKey: [...productKeys.lists(), 'infinite', { search, category, sort, anyOutOfStock }],
-    queryFn: ({ pageParam }) => api.fetchProductsPage({ pageParam, search, category, sort, anyOutOfStock }),
+    queryKey: [...productKeys.lists(), 'infinite', { search, category, sort, anyOutOfStock, featured }],
+    queryFn: ({ pageParam }) => api.fetchProductsPage({ pageParam, search, category, sort, anyOutOfStock, featured }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages, lastPageParam) => {
       if (!lastPage.hasMore) return undefined;
       return lastPageParam + PAGE_SIZE;
     },
     staleTime: 1000 * 60 * 5,
+    // Keep the previous result visible while a new filter/category/search
+    // refetch is in flight. Eliminates the "blink" where the list disappears
+    // and reappears. `isPlaceholderData` lets consumers add a subtle dim so
+    // the user still gets feedback that work is happening.
+    placeholderData: keepPreviousData,
   });
 };

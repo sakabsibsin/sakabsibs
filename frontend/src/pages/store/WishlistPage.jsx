@@ -42,15 +42,18 @@ export const WishlistPage = () => {
     .filter(Boolean);
 
   // Prune wishlist of any IDs whose product was deleted on the backend.
-  // Run after the query settles (no more loading) so we don't churn during
-  // initial fetch — and only if at least one result genuinely errored 404.
+  // Depend on a stable signature of which results errored so the effect
+  // re-fires when a *new* 404 comes in later in the session (e.g. admin
+  // deletes a wishlisted product while the page is open). Without this,
+  // the effect would only run once on the initial settle.
+  const errorSignature = results.map((r) => (r.isError ? '1' : '0')).join('');
   useEffect(() => {
     if (isLoading) return;
     results.forEach((r, i) => {
       if (r.isError) remove(wishlist[i]);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]);
+  }, [isLoading, errorSignature]);
 
   return (
     <motion.div
@@ -99,8 +102,8 @@ export const WishlistPage = () => {
       {/* Empty state */}
       {count === 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.1 }}
           className="flex flex-col items-center justify-center py-24 text-center"
         >

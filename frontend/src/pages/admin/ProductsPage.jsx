@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, SquarePen, Trash2, Search, X, ArrowLeft } from "lucide-react";
+import { Plus, SquarePen, Trash2, Search, X, ArrowLeft, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   useInfiniteProducts,
@@ -18,6 +18,18 @@ import {
   AlertDialogCancel, AlertDialogAction,
 } from "@/components/ui/AlertDialog";
 import { formatPrice, cn, getProductThumbnail, getEffectivePrice } from "@/lib/utils";
+
+/* ── Sort options ─────────────────────────────────── */
+// Same set of tokens the backend's SORT_SPECS understands. 'Latest' is the
+// default (empty string → createdAt DESC). 'Bestseller' on the admin side
+// only orders by featured first; it doesn't filter out non-featured (unlike
+// the storefront, where it's used as a filter).
+const sortOptions = [
+  { label: 'Latest',             value: '' },
+  { label: 'Bestseller',         value: 'featured' },
+  { label: 'Price: Low to High', value: 'price_asc' },
+  { label: 'Price: High to Low', value: 'price_desc' },
+];
 
 /* ── Skeleton ─────────────────────────────────────── */
 const SkeletonRows = () => (
@@ -44,6 +56,8 @@ const SkeletonRows = () => (
 export const ProductsPage = () => {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("ALL");
+  const [sort, setSort] = useState('');
+  const [sortOpen, setSortOpen] = useState(false);
   const [deletingId, setDeletingId]       = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
 
@@ -60,6 +74,7 @@ export const ProductsPage = () => {
   } = useInfiniteProducts({
     search: debouncedSearch,
     category: selectedCategory,
+    sort,
   });
 
   const products   = data?.pages.flatMap((page) => page.products) ?? [];
@@ -137,23 +152,70 @@ export const ProductsPage = () => {
         </Link>
       </div>
 
-      {/* ── Search ───────────────────────────────── */}
-      <div className="relative mb-1">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/28 pointer-events-none" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, code or material..."
-          className="w-full h-9 pl-10 pr-9 text-[13px] bg-background border border-border/50 focus:border-foreground/20 placeholder:text-muted-foreground/28 focus:outline-none transition-colors duration-200"
-        />
-        {search && (
+      {/* ── Search + Sort ────────────────────────── */}
+      {/* Search takes the row, fixed-width sort button on the right. The sort
+          button label is always just "Sort" so its width never depends on the
+          selected option — a small burgundy dot signals an active sort. */}
+      <div className="flex items-center gap-2 mb-1">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/28 pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, code or material..."
+            className="w-full h-9 pl-10 pr-9 text-[13px] bg-background border border-border/50 focus:border-foreground/20 placeholder:text-muted-foreground/28 focus:outline-none transition-colors duration-200"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/28 hover:text-foreground/60 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Sort */}
+        <div className="relative shrink-0">
           <button
-            onClick={() => setSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/28 hover:text-foreground/60 transition-colors"
+            type="button"
+            onClick={() => setSortOpen((o) => !o)}
+            className={cn(
+              'flex items-center gap-2 h-9 px-3 border text-xs font-light transition-colors duration-200',
+              sort
+                ? 'border-foreground text-foreground'
+                : 'border-border/50 text-muted-foreground hover:border-foreground/40 hover:text-foreground'
+            )}
           >
-            <X className="h-3.5 w-3.5" />
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            Sort
+            {sort && <span aria-hidden className="h-1 w-1 rounded-full bg-foreground" />}
           </button>
-        )}
+
+          {sortOpen && (
+            <>
+              {/* Click-outside catcher */}
+              <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-20 bg-background border border-border shadow-md min-w-[180px]">
+                {sortOptions.map((opt) => (
+                  <button
+                    key={opt.value || 'default'}
+                    type="button"
+                    onClick={() => { setSort(opt.value); setSortOpen(false); }}
+                    className={cn(
+                      'w-full text-left px-4 py-2.5 text-xs transition-colors',
+                      sort === opt.value
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Category tabs ────────────────────────── */}
@@ -270,7 +332,7 @@ export const ProductsPage = () => {
                         {product.productCode}
                       </span>
                       {product.featured && (
-                        <span className="inline-block text-[8px] tracking-[0.1em] uppercase font-semibold text-amber-700/70 bg-amber-50 border border-amber-200/60 px-1.5 py-[2px] leading-none rounded-full">
+                        <span className="inline-block text-[8px] tracking-[0.1em] uppercase font-semibold text-amber-700/70 bg-amber-50 border border-amber-200/60 px-1.5 py-[2px] leading-none">
                           Featured
                         </span>
                       )}

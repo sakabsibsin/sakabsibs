@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,17 @@ export const CategoryFilter = ({ categories = [], selected, onChange }) => {
     onChange(cat);
     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   };
+
+  // When the selection is reset externally — typically the "Clear" button on
+  // CatalogPage — the chip strip's internal scroll position doesn't change on
+  // its own. If the user was scrolled deep into the category list, the new
+  // "All" selection would be off-screen. Snap back to the start so the active
+  // chip is always visible.
+  useEffect(() => {
+    if (selected === '' && scrollRef.current) {
+      scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+  }, [selected]);
 
   // Mouse drag-to-scroll
   const dragState = useRef({ dragging: false, startX: 0, scrollLeft: 0 });

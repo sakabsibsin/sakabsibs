@@ -9,8 +9,10 @@ import { CategoryFilter } from '@/components/store/CategoryFilter';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 
+// 'Latest' (empty string) maps to the backend's default sort — createdAt DESC.
+// Same label as the admin page so the vocabulary is consistent across the app.
 const sortOptions = [
-  { label: 'Default',             value: '' },
+  { label: 'Latest',              value: '' },
   { label: 'Bestseller',          value: 'featured' },
   { label: 'Price: Low to High',  value: 'price_asc' },
   { label: 'Price: High to Low',  value: 'price_desc' },
@@ -39,6 +41,9 @@ export const CatalogPage = () => {
     search: debouncedSearch,
     category: selectedCategory,
     sort,
+    // "Bestseller" is conceptually a filter — show *only* featured pieces,
+    // not all products with featured ones floated to the top.
+    featured: sort === 'featured',
   });
 
   const products = data?.pages.flatMap((page) => page.products) ?? [];

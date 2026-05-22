@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLogin } from '@/features/auth/hooks';
 import { STORE_NAME } from '@/constants/config';
+import { getApiError } from '@/lib/utils';
 
 export const LoginPage = () => {
   const [password, setPassword] = useState('');
@@ -17,8 +17,11 @@ export const LoginPage = () => {
     setError('');
     login.mutate(password.trim(), {
       onSuccess: () => navigate('/admin/dashboard'),
-      onError: () => {
-        setError('Incorrect password. Please try again.');
+      onError: (err) => {
+        // Surface the real backend error (rate-limit, server down, etc.)
+        // instead of always showing "Incorrect password" — the user needs
+        // to know if they've been rate-limited or the server is unreachable.
+        setError(getApiError(err, 'Incorrect password. Please try again.'));
         setPassword('');
       },
     });
@@ -53,6 +56,8 @@ export const LoginPage = () => {
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

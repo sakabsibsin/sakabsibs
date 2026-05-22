@@ -498,6 +498,7 @@ const PRODUCTS = [
 
 const args = process.argv.slice(2);
 const clearOnly = args.includes('--clear');
+const force = args.includes('--force');
 
 const run = async () => {
   if (!process.env.MONGODB_URI) {
@@ -506,6 +507,15 @@ const run = async () => {
   }
   if (process.env.MONGODB_URI.startsWith('mongodb+srv://')) {
     console.error('❌ MONGODB_URI uses srv:// — known Windows DNS bug. Use the direct shard URI.');
+    process.exit(1);
+  }
+  // Refuse to run against a production DB without an explicit --force flag.
+  // The seed unconditionally wipes the database; a misconfigured local .env
+  // pointing at production would otherwise destroy real data silently.
+  if (process.env.NODE_ENV === 'production' && !force) {
+    console.error('❌ Refusing to seed in NODE_ENV=production without --force flag.');
+    console.error('   This script DELETES all products, categories, and settings.');
+    console.error('   If you really mean to do this, re-run with: node src/seed.js --force');
     process.exit(1);
   }
 

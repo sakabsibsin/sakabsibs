@@ -174,11 +174,41 @@ export const ProductDetailPage = () => {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(window.location.href).then(() => {
+    const url = window.location.href;
+    const onSuccess = () => {
       setCopied(true);
       clearTimeout(copyTimerRef.current);
       copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
-    });
+    };
+
+    // Clipboard API is undefined on http:// origins (insecure context) and on
+    // older mobile browsers. Fall back to a hidden textarea + execCommand so
+    // the share button still works for everyone.
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(onSuccess).catch(() => {
+        // Permission denied or some other failure — try the legacy path.
+        legacyCopy(url) && onSuccess();
+      });
+      return;
+    }
+    if (legacyCopy(url)) onSuccess();
+  };
+
+  // Legacy synchronous copy. Returns true on success.
+  const legacyCopy = (text) => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
   };
 
   if (isLoading) return <LoadingSkeleton />;
@@ -392,7 +422,7 @@ export const ProductDetailPage = () => {
           {/* ② Name */}
           <motion.h1
             variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] } } }}
-            className="font-serif text-[2rem] sm:text-[2.5rem] font-light leading-[1.08] tracking-[-0.01em] mb-2"
+            className="font-serif text-[1.5rem] sm:text-[2rem] font-light leading-[1.08] tracking-[-0.01em] mb-2"
           >
             {product.name}
           </motion.h1>

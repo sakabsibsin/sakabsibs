@@ -5,9 +5,13 @@ export const generateProductCode = async (categoryName) => {
   const cat = await Category.findOne({ name: categoryName }).lean();
   const prefix = cat?.codePrefix ?? categoryName.match(/[a-zA-Z]/g)?.slice(0, 2).join('').toUpperCase() ?? 'XX';
 
+  // Escape regex special chars in the prefix even though categories are admin-
+  // controlled — defense in depth so a category named "A+" can't break the query.
+  const safePrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   // Fetch only the highest-numbered code for this prefix in one sorted query
   const existing = await Product.find({
-    productCode: { $regex: `^${prefix}\\d+$` },
+    productCode: { $regex: `^${safePrefix}\\d+$` },
   }).sort({ productCode: -1 }).select('productCode').lean();
 
   let nextNum = 101;

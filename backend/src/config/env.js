@@ -11,10 +11,8 @@ for (const key of required) {
 
 // RESEND_API_KEY is treated as soft-required: if missing, the server still
 // boots so the storefront and admin work normally — only the forgot-password
-// flow fails. We warn at startup (see server.js) instead of hard-exiting.
-if (!process.env.RESEND_API_KEY) {
-  console.warn('⚠️  RESEND_API_KEY not set — forgot password emails will fail');
-}
+// flow fails. The production warning lives in server.js; we don't duplicate
+// it in dev where running without Resend is common and intentional.
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  listProducts, getFeaturedProducts, getProductStats,
+  listProducts, getFeaturedProducts, getProductStats, getRestockStats,
   getProduct, createProduct, updateProduct, deleteProduct,
   toggleProductStock, registerDemand,
   toggleVariantStock, registerVariantDemand,
@@ -20,8 +20,10 @@ const cache = (_req, res, next) => {
 const router = Router();
 router.get('/',          cache, listProducts);
 router.get('/featured',  cache, getFeaturedProducts);
-router.get('/stats',     requireAuth, getProductStats);
-router.get('/:id',       cache, getProduct);
+router.get('/stats',          requireAuth, getProductStats);
+// Must be registered before /:id so 'restock-stats' isn't captured as an id.
+router.get('/restock-stats',  requireAuth, getRestockStats);
+router.get('/:id',            cache, getProduct);
 router.post('/',         requireAuth, validate(createProductSchema), createProduct);
 router.put('/:id',       requireAuth, validate(updateProductSchema), updateProduct);
 router.delete('/:id',    requireAuth, deleteProduct);

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Star } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useFeaturedProducts } from '@/features/products/hooks';
 import { ProductGrid } from '@/components/store/ProductGrid';
 import { STORE_NAME, STORE_TAGLINE, STORE_SUB } from '@/constants/config';
@@ -39,12 +39,10 @@ export const HomePage = () => {
         <div className="relative z-10 max-w-2xl px-5 text-center">
           {/* Star overline — matches Instagram star emoji aesthetic */}
           <motion.div {...fadeUp(0.1)} className="mb-5 flex items-center justify-center gap-3">
-            {/* <Star className="h-3 w-3 fill-primary text-primary opacity-70" /> */}
             <span className="text-primary/40 text-xs">✦</span>
             <span className="text-2xs tracking-[0.45em] uppercase font-light text-primary/70">
               Tarnish Free · Affordable
             </span>
-            {/* <Star className="h-3 w-3 fill-primary text-primary opacity-70" /> */}
             <span className="text-primary/40 text-xs">✦</span>
           </motion.div>
 

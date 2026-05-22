@@ -10,7 +10,7 @@ import {
   AlertDialogDescription, AlertDialogFooter,
   AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/AlertDialog';
-import { useInfiniteProducts, useToggleStock, useToggleVariantStock, productKeys } from '@/features/products/hooks';
+import { useInfiniteProducts, useToggleStock, useToggleVariantStock, useRestockStats, productKeys } from '@/features/products/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getProductThumbnail, cn, getApiError } from '@/lib/utils';
@@ -71,6 +71,9 @@ export const RestockPage = () => {
     isLoading,
     isError,
     refetch,
+    // True while showing the previous filter's data and the new query is
+    // still in flight — used to dim the list as a soft loading cue.
+    isPlaceholderData,
   } = useInfiniteProducts({
     search: debouncedSearch,
     category: selectedCategory,
@@ -81,9 +84,13 @@ export const RestockPage = () => {
     () => data?.pages.flatMap((page) => page.products) ?? [],
     [data]
   );
-  const totalOos     = data?.pages[0]?.total ?? 0;
-  const allItems     = useMemo(() => flattenOos(loadedProducts), [loadedProducts]);
-  const totalSignals = useMemo(() => allItems.reduce((s, i) => s + i.demand, 0), [allItems]);
+  const totalOos = data?.pages[0]?.total ?? 0;
+  const allItems = useMemo(() => flattenOos(loadedProducts), [loadedProducts]);
+  // Aggregate signal count comes from a dedicated server endpoint so it
+  // reflects ALL out-of-stock products, not just the ones the user has
+  // paged in. Refetches automatically after any stock toggle.
+  const { data: restockStats } = useRestockStats();
+  const totalSignals = restockStats?.totalSignals ?? 0;
 
   // Search and category are server-side now — `allItems` already reflects
   // the active filters, no second client-side pass needed.
@@ -278,12 +285,12 @@ export const RestockPage = () => {
         {!isLoading && totalOos > 0 && (
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
-              <p className="text-lg font-serif tabular-nums leading-none">{totalOos}</p>
+              <p className="text-xl font-light tabular-nums tracking-tight leading-none">{totalOos}</p>
               <p className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground/40 mt-0.5">Out of Stock</p>
             </div>
             <div className="w-px h-7 bg-border" />
             <div className="text-right">
-              <p className="text-lg font-serif tabular-nums leading-none">{totalSignals}</p>
+              <p className="text-xl font-light tabular-nums tracking-tight leading-none">{totalSignals}</p>
               <p className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground/40 mt-0.5">Signals</p>
             </div>
           </div>
@@ -368,7 +375,15 @@ export const RestockPage = () => {
 
 
       {!isLoading && filtered.length > 0 && (
-        <div className="border border-border bg-card">
+        // Dim + freeze interactions while a filter/category swap is loading.
+        // `aria-busy` lets assistive tech announce the transient state.
+        <div
+          aria-busy={isPlaceholderData}
+          className={cn(
+            'border border-border bg-card transition-opacity duration-200',
+            isPlaceholderData && 'opacity-50 pointer-events-none'
+          )}
+        >
           <THead />
           {withDemand.map((item) => <Row key={item.key} item={item} dim={false} />)}
           {withDemand.length > 0 && noDemand.length > 0 && (

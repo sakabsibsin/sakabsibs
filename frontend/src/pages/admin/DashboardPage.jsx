@@ -54,9 +54,15 @@ export const DashboardPage = () => {
           >
             <Icon className="h-4 w-4 text-muted-foreground/40 mb-2" />
             {statsLoading ? (
-              <Skeleton className="h-7 w-10 mb-1" />
+              <Skeleton className="h-8 w-12 mb-1" />
             ) : (
-              <p className="text-2xl font-serif leading-none mb-1">{value ?? 0}</p>
+              // Inter Light at a larger size — bigger silhouette, thinner
+              // strokes. Reads as "considered editorial" instead of "dashboard
+              // chrome". tabular-nums keeps columns aligned, tracking-tight
+              // tightens the airier light weight back to label rhythm.
+              <p className="text-[2rem] font-light tabular-nums tracking-tight leading-none mb-1">
+                {value ?? 0}
+              </p>
             )}
             <p className="text-xs text-muted-foreground font-light">{label}</p>
           </div>

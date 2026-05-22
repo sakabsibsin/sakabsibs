@@ -199,6 +199,11 @@ export const ProductForm = ({ productId }) => {
   const [editingIndex, setEditingIndex] = useState(null);
   const [deleteIndex, setDeleteIndex] = useState(null);
   const [uploadingImages, setUploadingImages] = useState(false);
+  // Held true from submit-start through the navigation that follows success.
+  // Without this, React renders one frame between `mutateAsync` resolving
+  // (isPending → false) and `navigate()` taking effect — that's the brief
+  // un-blurred flash the admin sees just before the page changes.
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const uploadFiles = async (items) => {
     const results = await Promise.all(
@@ -284,6 +289,7 @@ export const ProductForm = ({ productId }) => {
   };
 
   const onSubmit = async (values) => {
+    setIsSubmitting(true);
     try {
       setUploadingImages(true);
       let uploadedImages;
@@ -303,6 +309,7 @@ export const ProductForm = ({ productId }) => {
         }
       } catch (err) {
         toast.error(getApiError(err, 'One or more images failed to upload. Please try again.'));
+        setIsSubmitting(false);
         return;
       } finally {
         setUploadingImages(false);
@@ -317,9 +324,14 @@ export const ProductForm = ({ productId }) => {
         await create.mutateAsync(payload);
         toast.success('Product added to catalog.');
       }
+      // Intentionally do NOT clear isSubmitting on success — the component
+      // is about to unmount via navigate(), so keeping the lock prevents
+      // the one-frame un-blur flash between mutation completion and route
+      // change.
       navigate('/admin/products');
     } catch {
       toast.error(isEditing ? 'Failed to update product. Please try again.' : 'Failed to create product. Please try again.');
+      setIsSubmitting(false);
     }
   };
 
@@ -343,6 +355,11 @@ export const ProductForm = ({ productId }) => {
   }
 
   const isPending = create.isPending || update.isPending;
+  // True any time the form is in flight — Cloudinary upload, DB save, OR the
+  // moment between save-success and the route change. The last one matters:
+  // without `isSubmitting` here the form un-blurs for one frame before the
+  // page navigates away.
+  const isBusy = uploadingImages || isPending || isSubmitting;
 
   return (
     <motion.div
@@ -371,7 +388,14 @@ export const ProductForm = ({ productId }) => {
         )}
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        aria-busy={isBusy}
+        className={cn(
+          'transition-[filter,opacity] duration-200',
+          isBusy && 'pointer-events-none blur-[1.5px] opacity-70 select-none'
+        )}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-3">
 
           {/* ── Left column ─────────────────────── */}
@@ -599,6 +623,18 @@ export const ProductForm = ({ productId }) => {
 
         </div>
       </form>
+
+      {/* Save-in-flight indicator. Single burgundy ring spinner — no text,
+          no card. Form is already blurred behind to show "busy" state. */}
+      {isBusy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div
+            role="status"
+            aria-label={uploadingImages ? 'Uploading images' : 'Saving product'}
+            className="h-10 w-10 border-2 border-primary/15 border-t-primary rounded-full animate-spin"
+          />
+        </div>
+      )}
 
       <VariantModal
         open={modalOpen}

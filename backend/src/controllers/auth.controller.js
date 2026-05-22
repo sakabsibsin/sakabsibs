@@ -42,18 +42,30 @@ export const forgotPassword = asyncHandler(async (_req, res) => {
   const token = crypto.randomBytes(32).toString('hex');
   const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-  // Token is stored on the admin_password setting itself. If admin_password
-  // hasn't been created yet (still using ADMIN_DEFAULT_PASSWORD from env),
-  // findOneAndUpdate returns null — in that case the email is still sent but
-  // the reset link won't work until the password setting exists. Acceptable
-  // because resetPassword surfaces a clear "invalid or expired" error.
-  await Setting.findOneAndUpdate(
-    { key: 'admin_password' },
-    { resetToken: token, resetTokenExpiry: expiry }
-  );
+  // Token is stored on the admin_password setting. If the admin has never
+  // changed the seed password, the setting may not exist yet — bootstrap it
+  // with a hashed copy of the env default so the reset link has a document
+  // to land on. Otherwise resetPassword would always fail with "invalid".
+  let setting = await Setting.findOne({ key: 'admin_password' });
+  if (!setting) {
+    const hashedDefault = await bcrypt.hash(env.ADMIN_DEFAULT_PASSWORD, 12);
+    setting = await Setting.create({ key: 'admin_password', value: hashedDefault });
+  }
+  setting.resetToken = token;
+  setting.resetTokenExpiry = expiry;
+  await setting.save();
 
   const resetLink = `${env.FRONTEND_URL}/admin/reset-password?token=${token}`;
-  await sendPasswordResetEmail(emailSetting.value, resetLink);
+
+  // Email delivery failure must NOT surface to the caller — exposing Resend
+  // errors would create a side-channel oracle (response time + error text
+  // would let an attacker detect whether admin_email was configured). Log
+  // server-side so ops can diagnose, but always return the generic message.
+  try {
+    await sendPasswordResetEmail(emailSetting.value, resetLink);
+  } catch (err) {
+    console.error('[forgotPassword] email send failed:', err?.message);
+  }
 
   return sendSuccess(res, { message: FORGOT_GENERIC_MESSAGE });
 });

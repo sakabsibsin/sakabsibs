@@ -3,7 +3,7 @@
   "short_name": "Sakab Sibs",
   "description": "Tarnish free accessories — curated collections to make you shine",
   "start_url": "/",
-  "display": "browser",
+  "display": "standalone",
   "background_color": "#F5ECE0",
   "theme_color": "#4A1E1E",
   "icons": [
