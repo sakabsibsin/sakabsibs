@@ -2,6 +2,10 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { STORE_NAME, STORE_TAGLINE } from '@/constants/config';
 
+// Swap these two strings per client deployment.
+const PLATFORM_NAME = 'Shopflow';
+const PLATFORM_URL  = 'https://shopflow.in';
+
 // Footer renders on every store page — pure opacity per the store-page rule.
 const col = (i) => ({
   initial: { opacity: 0 },
@@ -75,14 +79,19 @@ export const Footer = () => (
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="mt-8 pt-5 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-2"
+        className="mt-8 pt-10 border-t border-border/60 flex items-center justify-between gap-3"
       >
-        <p className="text-xs text-muted-foreground font-light">
+        <p className="text-xs font-light text-muted-foreground">
           &copy; {new Date().getFullYear()} {STORE_NAME}
         </p>
-        <p className="text-xs text-muted-foreground/60 font-light">
-          Tarnish free · Affordable · Made with care
-        </p>
+        <a
+          href={PLATFORM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-light text-muted-foreground hover:text-foreground transition-colors duration-200"
+        >
+          Powered by <span className="text-foreground">{PLATFORM_NAME}</span>
+        </a>
       </motion.div>
     </div>
   </footer>
