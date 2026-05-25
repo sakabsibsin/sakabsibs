@@ -17,8 +17,22 @@ connectDB().catch((err) => {
 // Compress all responses (gzip) — reduces payload size ~60-70%
 app.use(compression());
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL?.replace('https://', 'https://www.'),
+  process.env.FRONTEND_URL?.replace('https://www.', 'https://'),
+  'http://localhost:5173',
+].filter(Boolean);
+
 app.use(cors({
-  origin: env.FRONTEND_URL,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    console.warn('CORS blocked origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma'],
