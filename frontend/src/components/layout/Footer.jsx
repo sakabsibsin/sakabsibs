@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 import { STORE_NAME, STORE_TAGLINE } from '@/constants/config';
 
 // Swap these two strings per client deployment.
-const PLATFORM_NAME = 'Shopflow';
-const PLATFORM_URL  = 'https://shopflow.in';
+const PLATFORM_NAME = 'Wumix';
+const PLATFORM_URL  = 'https://wumix.in';
 
 // Footer renders on every store page — pure opacity per the store-page rule.
 const col = (i) => ({
